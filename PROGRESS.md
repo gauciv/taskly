@@ -1,6 +1,6 @@
 # Taskly: Build Progress
 Status: IN PROGRESS   <!-- set to COMPLETE only after P11.8 -->
-Current phase: P6
+Current phase: P7
 Last updated: 2026-10-09
 
 ## Checklist (tick [x] only when verified)
@@ -10,7 +10,7 @@ Last updated: 2026-10-09
 - P3:  [x] 3.1 [x] 3.2 [x] 3.3 [x] 3.4 [x] 3.5
 - P4:  [x] 4.1 [x] 4.2 [x] 4.3 [x] 4.4 [x] 4.5 [x] 4.6
 - P5:  [x] 5.1 [x] 5.2 [x] 5.3 [x] 5.4 [x] 5.5 [x] 5.6
-- P6:  [ ] 6.1 [ ] 6.2 [ ] 6.3 [ ] 6.4 [ ] 6.5
+- P6:  [x] 6.1 [x] 6.2 [x] 6.3 [x] 6.4 [x] 6.5
 - P7:  [ ] 7.1 [ ] 7.2 [ ] 7.3 [ ] 7.4
 - P8:  [ ] 8.1 [ ] 8.2 [ ] 8.3 [ ] 8.4 [ ] 8.5
 - P9:  [ ] 9.1 [ ] 9.2 [ ] 9.3 [ ] 9.4 [ ] 9.5 [ ] 9.6 [ ] 9.7
