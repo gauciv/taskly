@@ -1,14 +1,15 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { Colors } from '@/theme/tokens';
+import { useLocalSearchParams } from 'expo-router';
+import { TaskForm } from '@/components/task/TaskForm';
 
-export default function NewTask() {
+export default function NewTaskScreen() {
+  const params = useLocalSearchParams<{ categoryId?: string; due?: string }>();
+  const prefillCategoryId = params.categoryId ? Number(params.categoryId) : null;
+  const prefillDue = params.due ? Number(params.due) : null;
+
   return (
-    <View style={styles.c}>
-      <Text style={styles.t}>New Task</Text>
-    </View>
+    <TaskForm
+      prefillCategoryId={prefillCategoryId}
+      prefillDue={prefillDue}
+    />
   );
 }
-const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' },
-  t: { color: Colors.text },
-});
