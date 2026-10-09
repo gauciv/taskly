@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -11,6 +11,11 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { usePoppins } from '@/hooks/useFonts';
 import { ToastHost } from '@/components/ui/Toast';
 import { Colors } from '@/theme/tokens';
+import {
+  addNotificationTapListener,
+  checkLastNotificationResponse,
+  resyncAll,
+} from '@/services/notifications';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -19,19 +24,33 @@ export default function RootLayout() {
   const [dbReady, setDbReady] = useState(false);
   const hydrateTask = useTaskStore((s) => s.hydrate);
   const hydrateSettings = useSettingsStore((s) => s.hydrate);
+  const tasks = useTaskStore((s) => s.tasks);
 
   useEffect(() => {
     async function init() {
       try {
         await runMigrations();
         await Promise.all([hydrateTask(), hydrateSettings()]);
+        await resyncAll(useTaskStore.getState().tasks);
+        // Deep-link from cold start tap
+        await checkLastNotificationResponse((taskId) => {
+          router.push(`/task/${taskId}`);
+        });
       } catch {
-        // continue even if db fails
+        // continue even if db or notif fails
       } finally {
         setDbReady(true);
       }
     }
     init();
+  }, []);
+
+  // Notification tap while app is running
+  useEffect(() => {
+    const unsub = addNotificationTapListener((taskId) => {
+      router.push(`/task/${taskId}`);
+    });
+    return unsub;
   }, []);
 
   useEffect(() => {
