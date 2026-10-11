@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, PressableProps, StyleProp, ViewStyle, View } from 'react-native';
+import { Pressable, PressableProps, StyleProp, ViewStyle } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -27,10 +27,12 @@ export function PressableScale({ style, children, haptic, onPress, onPressIn, on
   return (
     <Pressable
       onPressIn={(e) => {
+        // eslint-disable-next-line react-hooks/immutability
         scale.value = withSpring(0.97, { damping: 18, stiffness: 400, mass: 0.5 });
         onPressIn?.(e);
       }}
       onPressOut={(e) => {
+        // eslint-disable-next-line react-hooks/immutability
         scale.value = withSpring(1, { damping: 18, stiffness: 220, mass: 0.9 });
         onPressOut?.(e);
       }}

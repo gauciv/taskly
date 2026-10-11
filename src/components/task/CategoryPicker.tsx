@@ -5,10 +5,8 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { Category } from '@/types';
 import { Colors, Spacing, Radii } from '@/theme/tokens';
 import { AppText } from '@/components/ui/AppText';
 import { Chip } from '@/components/ui/Chip';

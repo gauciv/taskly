@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -26,6 +27,7 @@ import { selectSortedTasks } from '@/store/selectors';
 import { taskDetailsHref } from '@/utils/routes';
 import { isToday, isOverdue } from '@/utils/date';
 import { useTaskFilters, type StatusFilter } from '@/store/useTaskFilters';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 
 const STATUS_OPTIONS: { label: string; value: StatusFilter }[] = [
   { label: 'All', value: 'all' },
@@ -52,6 +54,8 @@ export default function TasksScreen() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [completedCollapsed, setCompletedCollapsed] = useState(true);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { refreshing, onRefresh } = usePullRefresh();
 
   // Apply route params on mount/change
   useEffect(() => {
@@ -284,7 +288,16 @@ export default function TasksScreen() {
       ) : (
         <Animated.ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.list, { paddingBottom: listBottomPad }]}
+          contentContainerStyle={[styles.list, { paddingBottom: listBottomPad, flexGrow: 1 }]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={Colors.lime}
+              colors={[Colors.lime]}
+              progressBackgroundColor={Colors.surfaceAlt}
+            />
+          }
         >
           {/* Active section */}
           <View style={styles.sectionHeader}>

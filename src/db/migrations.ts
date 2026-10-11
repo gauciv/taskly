@@ -63,6 +63,26 @@ export async function runMigrations(): Promise<void> {
     }
   }
 
+  if (v < 2) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_id INTEGER REFERENCES tasks(id) ON DELETE SET NULL,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        body TEXT NOT NULL,
+        dedupe_key TEXT NOT NULL UNIQUE,
+        fire_at INTEGER NOT NULL,
+        read INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_notifications_fire ON notifications(fire_at);
+
+      PRAGMA user_version = 2;
+    `);
+  }
+
   // Seed default settings
   await db.runAsync(
     "INSERT OR IGNORE INTO settings (key, value) VALUES ('notifications_enabled', '1')",

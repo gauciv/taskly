@@ -11,9 +11,13 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withTiming,
   interpolateColor,
+  FadeInDown,
+  FadeOutUp,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import Constants from 'expo-constants';
 import { Colors, Spacing, Radii, SpringConfig } from '@/theme/tokens';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
@@ -53,8 +57,10 @@ function ToggleSwitch({ value, onValueChange, accessibilityLabel }: ToggleSwitch
 
   // Keep progress in sync with external value
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability
     progress.value = withSpring(value ? 1 : 0, SpringConfig);
-  }, [value, progress]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   function handlePress() {
     try { Haptics.selectionAsync(); } catch {}
@@ -76,7 +82,13 @@ function ToggleSwitch({ value, onValueChange, accessibilityLabel }: ToggleSwitch
   );
 }
 
-// ── Section helpers ───────────────────────────────────────────────────────────
+// ── Animated chips reveal ─────────────────────────────────────────────────────
+interface OffsetChipsProps {
+  visible: boolean;
+  reminderOffsetMin: 0 | 10 | 60;
+  onSelect: (v: 0 | 10 | 60) => void;
+}
+
 type OffsetOption = { label: string; value: 0 | 10 | 60 };
 const OFFSET_OPTIONS: OffsetOption[] = [
   { label: 'At due time', value: 0 },
@@ -84,6 +96,40 @@ const OFFSET_OPTIONS: OffsetOption[] = [
   { label: '1 hour before', value: 60 },
 ];
 
+function OffsetChips({ visible, reminderOffsetMin, onSelect }: OffsetChipsProps) {
+  const heightAnim = useSharedValue(visible ? 1 : 0);
+  const opacityAnim = useSharedValue(visible ? 1 : 0);
+
+  React.useEffect(() => {
+    heightAnim.value = withTiming(visible ? 1 : 0, { duration: 250 });
+    opacityAnim.value = withTiming(visible ? 1 : 0, { duration: 200 });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  const containerStyle = useAnimatedStyle(() => ({
+    maxHeight: heightAnim.value * 72,
+    opacity: opacityAnim.value,
+    overflow: 'hidden',
+  }));
+
+  return (
+    <Animated.View style={containerStyle}>
+      <View style={styles.chipRow}>
+        {OFFSET_OPTIONS.map((opt) => (
+          <Chip
+            key={opt.value}
+            label={opt.label}
+            selected={reminderOffsetMin === opt.value}
+            onPress={() => onSelect(opt.value)}
+            color={Colors.lime}
+          />
+        ))}
+      </View>
+    </Animated.View>
+  );
+}
+
+// ── Section helpers ───────────────────────────────────────────────────────────
 function Card({ children }: { children: React.ReactNode }) {
   return <View style={styles.card}>{children}</View>;
 }
@@ -111,12 +157,15 @@ export default function SettingsScreen() {
     setReminderOffset,
   } = useSettingsStore();
 
-  const { tasks, loadSampleData, clearCompleted, resetAll } = useTaskStore();
+  const { tasks, clearCompleted, resetAll } = useTaskStore();
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(userName);
   const [savingName, setSavingName] = useState(false);
   const inputRef = useRef<TextInput>(null);
+
+  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
+  const completedCount = tasks.filter((t) => t.completed).length;
 
   async function handleSaveName() {
     setSavingName(true);
@@ -126,21 +175,11 @@ export default function SettingsScreen() {
     setEditingName(false);
   }
 
-  async function handleLoadSamples() {
-    await loadSampleData();
-    showToast('Sample tasks loaded');
-    try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
-  }
-
   async function handleClearCompleted() {
-    const count = tasks.filter((t) => t.completed).length;
-    if (count === 0) {
-      showToast('No completed tasks to clear');
-      return;
-    }
+    if (completedCount === 0) return;
     const ok = await confirm({
       title: 'Clear completed tasks?',
-      message: `${count} completed task${count === 1 ? '' : 's'} will be permanently removed.`,
+      message: `${completedCount} completed task${completedCount === 1 ? '' : 's'} will be permanently removed.`,
       confirmLabel: 'Clear',
       destructive: true,
     });
@@ -231,27 +270,20 @@ export default function SettingsScreen() {
               accessibilityLabel="Enable reminders"
             />
           </CardRow>
-          {notificationsEnabled ? (
-            <View style={styles.offsetSection}>
-              <AppText variant="caption" color={Colors.textMuted} style={styles.remindLabel}>
-                Remind me
+
+          {/* Animated timing chips — visible only when toggle is on */}
+          <OffsetChips
+            visible={notificationsEnabled}
+            reminderOffsetMin={reminderOffsetMin}
+            onSelect={setReminderOffset}
+          />
+
+          {!notificationsEnabled && (
+            <Animated.View entering={FadeInDown.duration(200)} exiting={FadeOutUp.duration(180)}>
+              <AppText variant="caption" color={Colors.textFaint} style={styles.notifHint}>
+                Enable to receive reminders for upcoming tasks
               </AppText>
-              <View style={styles.chipRow}>
-                {OFFSET_OPTIONS.map((opt) => (
-                  <Chip
-                    key={opt.value}
-                    label={opt.label}
-                    selected={reminderOffsetMin === opt.value}
-                    onPress={() => setReminderOffset(opt.value)}
-                    color={Colors.lime}
-                  />
-                ))}
-              </View>
-            </View>
-          ) : (
-            <AppText variant="caption" color={Colors.textFaint} style={styles.notifHint}>
-              Enable to receive reminders for upcoming tasks
-            </AppText>
+            </Animated.View>
           )}
           <AppText variant="caption" color={Colors.textFaint} style={styles.notifHint}>
             Reminders require a development build — silently skipped in Expo Go.
@@ -262,24 +294,20 @@ export default function SettingsScreen() {
         <SectionLabel label="Data" />
         <Card>
           <TouchableOpacity
-            style={styles.dataRow}
-            onPress={handleLoadSamples}
-            accessibilityLabel="Load sample tasks"
-            accessibilityRole="button"
-          >
-            <AppText variant="label" color={Colors.text}>Load sample tasks</AppText>
-            <AppText variant="caption" color={Colors.textFaint}>Add 10 demo tasks</AppText>
-          </TouchableOpacity>
-          <View style={styles.divider} />
-          <TouchableOpacity
-            style={styles.dataRow}
+            style={[styles.dataRow, completedCount === 0 && styles.dataRowDisabled]}
             onPress={handleClearCompleted}
+            disabled={completedCount === 0}
             accessibilityLabel="Clear completed tasks"
             accessibilityRole="button"
           >
-            <AppText variant="label" color={Colors.text}>Clear completed tasks</AppText>
+            <AppText
+              variant="label"
+              color={completedCount > 0 ? Colors.text : Colors.textFaint}
+            >
+              Clear completed tasks
+            </AppText>
             <AppText variant="caption" color={Colors.textFaint}>
-              {tasks.filter((t) => t.completed).length} completed
+              {completedCount} completed
             </AppText>
           </TouchableOpacity>
           <View style={styles.divider} />
@@ -296,11 +324,13 @@ export default function SettingsScreen() {
 
         {/* About */}
         <SectionLabel label="About" />
-        <Card>
-          <AppText variant="body" color={Colors.textMuted} style={styles.about}>
-            Taskly v1.0 · Mobile Application Development mini project · Built with Expo + SQLite
-          </AppText>
-        </Card>
+        <AppText
+          variant="caption"
+          color={Colors.textMuted}
+          style={styles.aboutLine}
+        >
+          Taskly {appVersion} by Gauciv
+        </AppText>
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -398,16 +428,11 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  offsetSection: {
-    marginTop: 4,
-  },
-  remindLabel: {
-    marginBottom: Spacing.s2,
-  },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.s2,
+    paddingTop: Spacing.s2,
   },
   notifHint: {
     marginTop: 4,
@@ -417,12 +442,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 2,
   },
+  dataRowDisabled: {
+    opacity: 0.4,
+  },
   divider: {
     height: 1,
     backgroundColor: Colors.border,
     marginVertical: 4,
   },
-  about: {
-    lineHeight: 20,
+  aboutLine: {
+    textAlign: 'center',
+    marginTop: Spacing.s2,
+    marginBottom: Spacing.s2,
   },
 });

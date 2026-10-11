@@ -14,7 +14,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Radii, Spacing } from '@/theme/tokens';
+import { Colors, Spacing } from '@/theme/tokens';
 import { AppText } from '@/components/ui/AppText';
 import { Chip } from '@/components/ui/Chip';
 import { Button } from '@/components/ui/Button';
@@ -60,12 +60,16 @@ export function FilterSheet({
   const backdropOpacity = useSharedValue(0);
 
   const animateIn = useCallback(() => {
+    // eslint-disable-next-line react-hooks/immutability
     translateY.value = withSpring(0, { damping: 22, stiffness: 260, mass: 0.9 });
+    // eslint-disable-next-line react-hooks/immutability
     backdropOpacity.value = withTiming(1, { duration: 200 });
   }, [translateY, backdropOpacity]);
 
   const animateOut = useCallback((onDone?: () => void) => {
+    // eslint-disable-next-line react-hooks/immutability
     translateY.value = withSpring(SHEET_HEIGHT, { damping: 22, stiffness: 260, mass: 0.9 });
+    // eslint-disable-next-line react-hooks/immutability
     backdropOpacity.value = withTiming(0, { duration: 180 }, (finished) => {
       if (finished && onDone) runOnJS(onDone)();
     });

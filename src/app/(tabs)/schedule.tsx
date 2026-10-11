@@ -4,6 +4,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { router } from 'expo-router';
@@ -20,6 +21,7 @@ import { useScheduleStore } from '@/store/useScheduleStore';
 import { selectTasksForDay, selectDayHasTasks } from '@/store/selectors';
 import { weekDays, formatTime } from '@/utils/date';
 import { taskDetailsHref } from '@/utils/routes';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import type { Category } from '@/types';
 
 export default function ScheduleScreen() {
@@ -31,6 +33,7 @@ export default function ScheduleScreen() {
 
   const [anchor, setAnchor] = useState(() => Date.now());
   const [selectedDay, setSelectedDay] = useState(() => new Date());
+  const { refreshing, onRefresh } = usePullRefresh();
 
   const days = useMemo(() => weekDays(anchor), [anchor]);
   const dayTasks = useMemo(() => selectTasksForDay(tasks, selectedDay), [tasks, selectedDay]);
@@ -138,7 +141,17 @@ export default function ScheduleScreen() {
         exiting={FadeOut.duration(180)}
         style={styles.timeline}
       >
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.timelineContent, { paddingBottom: TabBarTokens.height + insets.bottom + 40 }]}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.timelineContent, { paddingBottom: TabBarTokens.height + insets.bottom + 40, flexGrow: 1 }]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={Colors.lime}
+              colors={[Colors.lime]}
+              progressBackgroundColor={Colors.surfaceAlt}
+            />
+          }
+        >
           {dayTasks.length === 0 ? (
             <EmptyState
               icon="calendar"

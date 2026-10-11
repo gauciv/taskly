@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, AppState } from 'react-native';
 import { Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { runMigrations } from '@/db/migrations';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
 import { usePoppins } from '@/hooks/useFonts';
 import { ToastHost } from '@/components/ui/Toast';
 import { ConfirmHost } from '@/components/ui/ConfirmDialog';
@@ -26,7 +27,8 @@ export default function RootLayout() {
   const [dbReady, setDbReady] = useState(false);
   const hydrateTask = useTaskStore((s) => s.hydrate);
   const hydrateSettings = useSettingsStore((s) => s.hydrate);
-  const tasks = useTaskStore((s) => s.tasks);
+  const hydrateNotifs = useNotificationStore((s) => s.hydrate);
+  const syncInbox = useNotificationStore((s) => s.syncInbox);
 
   useEffect(() => {
     async function init() {
@@ -34,9 +36,12 @@ export default function RootLayout() {
         await runMigrations();
         await Promise.all([hydrateTask(), hydrateSettings()]);
         await resyncAll(useTaskStore.getState().tasks);
+        await hydrateNotifs();
+        await syncInbox(Date.now());
         // Deep-link from cold start tap
         await checkLastNotificationResponse((taskId) => {
           router.push(taskDetailsHref(taskId));
+          useNotificationStore.getState().markReadForTask(taskId);
         });
       } catch {
         // continue even if db or notif fails
@@ -47,10 +52,31 @@ export default function RootLayout() {
     init();
   }, []);
 
+  // Foreground / background handler: sync inbox on foreground
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        syncInbox(Date.now()).catch(() => {});
+      }
+    });
+    return () => sub.remove();
+  }, [syncInbox]);
+
+  // 30-second inbox sync interval while app is active
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (AppState.currentState === 'active') {
+        syncInbox(Date.now()).catch(() => {});
+      }
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [syncInbox]);
+
   // Notification tap while app is running
   useEffect(() => {
     const unsub = addNotificationTapListener((taskId) => {
       router.push(taskDetailsHref(taskId));
+      useNotificationStore.getState().markReadForTask(taskId);
     });
     return unsub;
   }, []);
@@ -89,6 +115,10 @@ export default function RootLayout() {
             <Stack.Screen
               name="task/edit/[id]"
               options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+            />
+            <Stack.Screen
+              name="notifications"
+              options={{ presentation: 'card', animation: 'slide_from_right' }}
             />
           </Stack>
           <ToastHost />

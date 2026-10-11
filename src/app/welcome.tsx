@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -7,12 +7,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import Animated, {
-  FadeInDown,
-  withSpring,
-  useSharedValue,
-  useAnimatedStyle,
-} from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Colors, Spacing, Radii, SpringConfig } from '@/theme/tokens';

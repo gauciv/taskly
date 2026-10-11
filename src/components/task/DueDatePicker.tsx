@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Platform, Switch, TouchableOpacity } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { format, startOfDay, addDays } from 'date-fns';
-import { Colors, Spacing, Radii } from '@/theme/tokens';
+import { Colors, Spacing } from '@/theme/tokens';
 import { AppText } from '@/components/ui/AppText';
 import { Chip } from '@/components/ui/Chip';
 
@@ -99,7 +99,7 @@ export function DueDatePicker({ dueAt, dueHasTime, onChange }: DueDatePickerProp
       {/* iOS inline date picker */}
       {showDatePicker && Platform.OS === 'ios' && (
         <DateTimePicker
-          value={new Date(dueAt ?? Date.now())}
+          value={new Date(dueAt ?? todayMs())}
           mode="date"
           display="inline"
           themeVariant="dark"

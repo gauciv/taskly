@@ -13,7 +13,6 @@ import {
   syncTaskNotification,
   cancelTaskNotification,
 } from '@/services/notifications';
-import { getSampleTasks } from '@/utils/sampleData';
 
 interface TaskStore {
   tasks: Task[];
@@ -27,9 +26,10 @@ interface TaskStore {
   restoreTask: (snapshot: TaskSnapshot) => Promise<void>;
   addCategory: (cat: { name: string; color: string; icon: string }) => Promise<void>;
   clearCompleted: () => Promise<void>;
-  loadSampleData: () => Promise<void>;
   resetAll: () => Promise<void>;
 }
+
+// Note: loadSampleData removed per U2.10
 
 export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: [],
@@ -46,6 +46,11 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       const task = await insertTask(input);
       set((s) => ({ tasks: [task, ...s.tasks] }));
       await syncTaskNotification(task);
+      // Sync notification inbox for new task
+      try {
+        const { useNotificationStore } = await import('./useNotificationStore');
+        await useNotificationStore.getState().syncInbox(Date.now());
+      } catch {}
     } catch {
       showToast("Couldn't save. Try again.");
     }
@@ -60,6 +65,11 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       const updated = await updateTask(id, patch);
       set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? updated : t)) }));
       await syncTaskNotification(updated);
+      // Sync notification inbox after update
+      try {
+        const { useNotificationStore } = await import('./useNotificationStore');
+        await useNotificationStore.getState().syncInbox(Date.now());
+      } catch {}
     } catch {
       set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? prev : t)) }));
       showToast("Couldn't save. Try again.");
@@ -79,6 +89,11 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? updated : t)) }));
       if (completed) {
         await cancelTaskNotification(updated);
+        // Mark notification inbox entries read for this task
+        try {
+          const { useNotificationStore } = await import('./useNotificationStore');
+          await useNotificationStore.getState().markReadForTask(id);
+        } catch {}
       } else {
         await syncTaskNotification(updated);
       }
@@ -136,21 +151,20 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     }
   },
 
-  loadSampleData: async () => {
-    const samples = getSampleTasks(get().categories);
-    for (const input of samples) {
-      await get().addTask(input);
-    }
-  },
-
   resetAll: async () => {
     const db = await import('@/db/client').then((m) => m.getDb());
     await (await db).execAsync('DELETE FROM tasks');
     await (await db).execAsync('DELETE FROM categories');
+    await (await db).execAsync('DELETE FROM notifications');
     await (await db).execAsync("DELETE FROM settings WHERE key != 'onboarded'");
     // Re-run migrations to re-seed
     await import('@/db/migrations').then((m) => m.runMigrations());
     const [tasks, categories] = await Promise.all([getAllTasks(), getAllCategories()]);
     set({ tasks, categories });
+    // Clear notification store
+    try {
+      const { useNotificationStore } = await import('./useNotificationStore');
+      useNotificationStore.setState({ items: [], unreadCount: 0 });
+    } catch {}
   },
 }));

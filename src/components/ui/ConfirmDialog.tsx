@@ -58,10 +58,13 @@ export function ConfirmHost() {
 
   useEffect(() => {
     if (options) {
+      // eslint-disable-next-line react-hooks/immutability
       scale.value = withSpring(1, SpringConfig);
+      // eslint-disable-next-line react-hooks/immutability
       opacity.value = withTiming(1, { duration: 180 });
       try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning); } catch {}
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options]);
 
   useEffect(() => {
@@ -71,6 +74,7 @@ export function ConfirmHost() {
       return true;
     });
     return () => handler.remove();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options]);
 
   function animateClose(value: boolean) {

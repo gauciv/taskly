@@ -4,13 +4,13 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
+  RefreshControl,
 } from 'react-native';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, Radii, TabBar as TabBarTokens, tintedFill } from '@/theme/tokens';
-import { Screen } from '@/components/ui/Screen';
+import { Colors, Spacing, Radii, TabBar as TabBarTokens, tintedFill } from '@/theme/tokens';import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { IconButton } from '@/components/ui/IconButton';
 import { SectionHeader } from '@/components/ui/SectionHeader';
@@ -19,13 +19,14 @@ import { TaskCard } from '@/components/task/TaskCard';
 import { WeeklyActivityChart } from '@/components/ui/WeeklyActivityChart';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
 import {
   selectTodayAndOverdue,
   selectOpenCountByCategory,
-  selectOverdueCount,
   selectWeeklyActivity,
 } from '@/store/selectors';
 import { taskDetailsHref, notificationsHref } from '@/utils/routes';
+import { usePullRefresh } from '@/hooks/usePullRefresh';
 import type { Category } from '@/types';
 
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
@@ -46,14 +47,14 @@ export default function HomeScreen() {
   const userName = useSettingsStore((s) => s.userName);
 
   const todayTasks = useMemo(() => selectTodayAndOverdue(tasks), [tasks]);
-  const overdueCount = useMemo(() => selectOverdueCount(tasks), [tasks]);
   const catCounts = useMemo(() => selectOpenCountByCategory(tasks, categories), [tasks, categories]);
   // eslint-disable-next-line react-hooks/purity
   const weeklyActivity = useMemo(() => selectWeeklyActivity(tasks, Date.now()), [tasks]);
-
-  const hasTasks = tasks.length > 0;
+  const unreadCount = useNotificationStore((s) => s.unreadCount);  const hasTasks = tasks.length > 0;
   const topCats = catCounts.slice(0, 6);
   const todaySlice = todayTasks.slice(0, 5);
+
+  const { refreshing, onRefresh } = usePullRefresh();
 
   function getCat(id: number | null): Category | undefined {
     return id ? categories.find((c) => c.id === id) : undefined;
@@ -64,6 +65,15 @@ export default function HomeScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scroll, { paddingBottom: TabBarTokens.height + insets.bottom + 40 }]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.lime}
+            colors={[Colors.lime]}
+            progressBackgroundColor={Colors.surfaceAlt}
+          />
+        }
       >
         {/* Header */}
         <Animated.View entering={FadeInDown.duration(220)} style={styles.header}>
@@ -79,7 +89,7 @@ export default function HomeScreen() {
           <IconButton
             icon="bell"
             accessibilityLabel="Notifications"
-            badge={overdueCount > 0}
+            badgeCount={unreadCount}
             onPress={() => router.push(notificationsHref)}
           />
         </Animated.View>

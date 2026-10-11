@@ -36,11 +36,11 @@ Last updated: 2026-10-11
 - [x] U2.4  Task Details screen
 - [x] U2.5  Compact Recent Activity row
 - [x] U2.6  Weekly Activity chart card (+ selectWeeklyActivity)
-- [ ] U2.7  Pull-to-refresh (Home, Tasks, Schedule, Notifications) + usePullRefresh
-- [ ] U2.8  Notifications data layer: migration v2, repo, store, syncInbox, listeners, upcoming selector
-- [ ] U2.9  Notifications screen UI, bell badge, routing
-- [ ] U2.10 Settings cleanup (no "Remind me" label, no sample data, confirmations, About line, README)
-- [ ] U2.11 Final QA: tsc, lint, bundle, visual audit vs reference image, grep checks, commit
+- [x] U2.7  Pull-to-refresh (Home, Tasks, Schedule, Notifications) + usePullRefresh
+- [x] U2.8  Notifications data layer: migration v2, repo, store, syncInbox, listeners, upcoming selector
+- [x] U2.9  Notifications screen UI, bell badge, routing
+- [x] U2.10 Settings cleanup (no "Remind me" label, no sample data, confirmations, About line, README)
+- [x] U2.11 Final QA: tsc, lint, bundle, visual audit vs reference image, grep checks, commit
 
 ## Known issues
 (non-blocking bugs or warnings)
