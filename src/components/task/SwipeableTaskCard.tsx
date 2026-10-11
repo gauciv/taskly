@@ -7,6 +7,7 @@ import { Task, Category } from '@/types';
 import { Spacing } from '@/theme/tokens';
 import { TaskCard } from './TaskCard';
 import { SwipeDeleteAction } from './SwipeDeleteAction';
+import { confirm } from '@/components/ui/ConfirmDialog';
 
 interface SwipeableTaskCardProps {
   task: Task;
@@ -27,16 +28,30 @@ export function SwipeableTaskCard({
 }: SwipeableTaskCardProps) {
   const swipeRef = useRef<SwipeableMethods>(null);
 
+  const handleDeletePress = useCallback(
+    async (methods: SwipeableMethods) => {
+      // Close swipeable while dialog is open
+      methods.close();
+      const ok = await confirm({
+        title: 'Delete this task?',
+        message: `"${task.title}" will be permanently removed.`,
+        confirmLabel: 'Delete',
+        destructive: true,
+      });
+      if (ok) {
+        onDelete();
+      }
+    },
+    [task.title, onDelete]
+  );
+
   const renderRightActions = useCallback(
     (_prog: SharedValue<number>, _trans: SharedValue<number>, methods: SwipeableMethods) => (
       <SwipeDeleteAction
-        onDelete={() => {
-          methods.close();
-          onDelete();
-        }}
+        onDelete={() => handleDeletePress(methods)}
       />
     ),
-    [onDelete]
+    [handleDeletePress]
   );
 
   return (

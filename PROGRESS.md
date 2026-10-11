@@ -29,6 +29,19 @@ Last updated: 2026-10-11
 - P11 audit: all screens verified against the design system; no stock-looking controls; custom animated toggle replaces Switch; README updated with full feature table and architecture description.
 - UI fix 2026-10-11: Tasks tab filters redesigned (single status row + filter sheet); root cause: three horizontal ScrollViews lacked flexGrow:0/flexShrink:0 so the flex:1 task list compressed them to zero height, and Chip had a fixed height:32 that clipped Poppins' tall line metrics on Android. Fixed by adding flexGrow:0/flexShrink:0 to all chip scrollers, replacing fixed height with minHeight:36 + paddingVertical:8, and adding includeFontPadding:false/explicit lineHeight on Android. Category and priority filters moved into a Modal bottom sheet; only one status chip row remains on the main screen; FAB hidden when no tasks exist.
 
+## UI Update 2
+- [ ] U2.1  ConfirmDialog + ConfirmHost, all destructive actions use it
+- [ ] U2.2  Floating/header "+" removed; raised center "+" in tab bar (+ schedule-day prefill store)
+- [ ] U2.3  Route restructure: details at task/[id], edit at task/edit/[id], routes helper, all navigation updated
+- [ ] U2.4  Task Details screen
+- [ ] U2.5  Compact Recent Activity row
+- [ ] U2.6  Weekly Activity chart card (+ selectWeeklyActivity)
+- [ ] U2.7  Pull-to-refresh (Home, Tasks, Schedule, Notifications) + usePullRefresh
+- [ ] U2.8  Notifications data layer: migration v2, repo, store, syncInbox, listeners, upcoming selector
+- [ ] U2.9  Notifications screen UI, bell badge, routing
+- [ ] U2.10 Settings cleanup (no "Remind me" label, no sample data, confirmations, About line, README)
+- [ ] U2.11 Final QA: tsc, lint, bundle, visual audit vs reference image, grep checks, commit
+
 ## Known issues
 (non-blocking bugs or warnings)
 

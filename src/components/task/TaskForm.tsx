@@ -6,7 +6,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
@@ -20,6 +19,7 @@ import { PriorityPicker } from './PriorityPicker';
 import { DueDatePicker } from './DueDatePicker';
 import { useTaskStore } from '@/store/useTaskStore';
 import { showToast } from '@/components/ui/Toast';
+import { confirm } from '@/components/ui/ConfirmDialog';
 
 interface TaskFormProps {
   task?: Task;
@@ -88,24 +88,22 @@ export function TaskForm({ task, prefillCategoryId, prefillDue }: TaskFormProps)
 
   async function handleDelete() {
     if (!task) return;
-    Alert.alert('Delete Task', 'This task will be deleted.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-          const snapshot = await deleteTask(task.id);
-          router.back();
-          if (snapshot) {
-            showToast('Task deleted', {
-              label: 'Undo',
-              onPress: () => restoreTask(snapshot),
-            });
-          }
-        },
-      },
-    ]);
+    const ok = await confirm({
+      title: 'Delete this task?',
+      message: `"${task.title}" will be permanently removed.`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    const snapshot = await deleteTask(task.id);
+    router.back();
+    if (snapshot) {
+      showToast('Task deleted', {
+        label: 'Undo',
+        onPress: () => restoreTask(snapshot),
+      });
+    }
   }
 
   return (

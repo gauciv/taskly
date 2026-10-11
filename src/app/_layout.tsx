@@ -10,6 +10,7 @@ import { useTaskStore } from '@/store/useTaskStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { usePoppins } from '@/hooks/useFonts';
 import { ToastHost } from '@/components/ui/Toast';
+import { ConfirmHost } from '@/components/ui/ConfirmDialog';
 import { Colors } from '@/theme/tokens';
 import {
   addNotificationTapListener,
@@ -86,6 +87,7 @@ export default function RootLayout() {
             />
           </Stack>
           <ToastHost />
+          <ConfirmHost />
         </View>
       </SafeAreaProvider>
     </GestureHandlerRootView>

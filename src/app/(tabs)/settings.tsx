@@ -4,7 +4,6 @@ import {
   StyleSheet,
   ScrollView,
   TextInput,
-  Alert,
   TouchableOpacity,
   Pressable,
 } from 'react-native';
@@ -20,6 +19,7 @@ import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { Chip } from '@/components/ui/Chip';
 import { showToast } from '@/components/ui/Toast';
+import { confirm } from '@/components/ui/ConfirmDialog';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useTaskStore } from '@/store/useTaskStore';
 import { cancelTaskNotification } from '@/services/notifications';
@@ -132,44 +132,36 @@ export default function SettingsScreen() {
     try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
   }
 
-  function handleClearCompleted() {
+  async function handleClearCompleted() {
     const count = tasks.filter((t) => t.completed).length;
     if (count === 0) {
       showToast('No completed tasks to clear');
       return;
     }
-    Alert.alert('Clear completed', `Remove ${count} completed task${count === 1 ? '' : 's'}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Clear',
-        style: 'destructive',
-        onPress: async () => {
-          await clearCompleted();
-          showToast('Completed tasks cleared');
-        },
-      },
-    ]);
+    const ok = await confirm({
+      title: 'Clear completed tasks?',
+      message: `${count} completed task${count === 1 ? '' : 's'} will be permanently removed.`,
+      confirmLabel: 'Clear',
+      destructive: true,
+    });
+    if (!ok) return;
+    await clearCompleted();
+    showToast('Completed tasks cleared');
   }
 
-  function handleResetAll() {
-    Alert.alert(
-      'Reset all data',
-      'This will delete all tasks and reset the app. Cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset',
-          style: 'destructive',
-          onPress: async () => {
-            for (const t of tasks) {
-              await cancelTaskNotification(t);
-            }
-            await resetAll();
-            showToast('App reset');
-          },
-        },
-      ],
-    );
+  async function handleResetAll() {
+    const ok = await confirm({
+      title: 'Reset all data?',
+      message: "All tasks, custom categories, notifications and settings will be erased. This can't be undone.",
+      confirmLabel: 'Reset everything',
+      destructive: true,
+    });
+    if (!ok) return;
+    for (const t of tasks) {
+      await cancelTaskNotification(t);
+    }
+    await resetAll();
+    showToast('App reset');
   }
 
   return (
