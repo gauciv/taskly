@@ -21,7 +21,7 @@ import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeabl
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/utils/feedback';
 import { format, formatDistanceToNowStrict, isToday, isYesterday } from 'date-fns';
 import {
   Colors,
@@ -97,7 +97,7 @@ function SegmentedControl({ active, unreadCount, onPress }: SegmentedControlProp
 
   function handlePress(seg: Segment) {
     translateX.value = seg === 'all' ? 0 : 1;
-    try { Haptics.selectionAsync(); } catch {}
+    haptic.selection();
     onPress(seg);
   }
 
@@ -242,7 +242,7 @@ function NotifItem({ item, taskCompleted, taskDeleted, onDismiss, onPress }: Not
   );
 
   function handlePress() {
-    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+    haptic.light();
     onPress();
   }
 
@@ -448,7 +448,7 @@ export default function NotificationsScreen() {
   }
 
   async function handleMarkAllRead() {
-    try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+    haptic.success();
     await markAllRead();
   }
 

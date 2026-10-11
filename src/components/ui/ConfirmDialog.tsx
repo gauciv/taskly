@@ -15,7 +15,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/utils/feedback';
 import { create } from 'zustand';
 import { Colors, Spacing, Radii, SpringConfig, tintedFill } from '@/theme/tokens';
 import { AppText } from './AppText';
@@ -62,7 +62,7 @@ export function ConfirmHost() {
       scale.value = withSpring(1, SpringConfig);
       // eslint-disable-next-line react-hooks/immutability
       opacity.value = withTiming(1, { duration: 180 });
-      try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning); } catch {}
+      haptic.warning();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options]);

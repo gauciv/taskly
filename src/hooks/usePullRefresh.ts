@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/utils/feedback';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { showToast } from '@/components/ui/Toast';
@@ -44,9 +44,7 @@ export function usePullRefresh() {
       if (elapsed < MIN_SPINNER_MS) {
         await new Promise<void>((r) => setTimeout(r, MIN_SPINNER_MS - elapsed));
       }
-      try {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch {}
+      haptic.success();
     } catch {
       showToast("Couldn't refresh. Try again.");
     } finally {

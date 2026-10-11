@@ -1,1 +1,13 @@
  M git_status.txt
+ M src/app/notifications.tsx
+ M src/app/task/[id].tsx
+ M src/app/welcome.tsx
+ M src/components/task/SwipeDeleteAction.tsx
+ M src/components/task/TaskForm.tsx
+ M src/components/ui/AnimatedCheckbox.tsx
+ M src/components/ui/Confetti.tsx
+ M src/components/ui/ConfirmDialog.tsx
+ M src/components/ui/PressableScale.tsx
+ M src/components/ui/TabBar.tsx
+ M src/hooks/usePullRefresh.ts
+ M tsc_out.txt

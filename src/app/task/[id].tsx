@@ -17,7 +17,7 @@ import { showToast } from '@/components/ui/Toast';
 import { confirm } from '@/components/ui/ConfirmDialog';
 import { taskEditHref } from '@/utils/routes';
 import { isOverdue, isToday } from '@/utils/date';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/utils/feedback';
 import { Priority } from '@/types';
 
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
@@ -69,7 +69,7 @@ export default function TaskDetailsScreen() {
   const catColor = category?.color ?? Colors.purple;
 
   async function handleToggle() {
-    try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); } catch {}
+    haptic.light();
     toggleComplete(t.id);
   }
 
@@ -81,8 +81,7 @@ export default function TaskDetailsScreen() {
       destructive: true,
     });
     if (!ok) return;
-    try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
-    const snapshot = await deleteTask(t.id);
+    haptic.medium();    const snapshot = await deleteTask(t.id);
     router.back();
     if (snapshot) {
       showToast('Task deleted', { label: 'Undo', onPress: () => restoreTask(snapshot) });

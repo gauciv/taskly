@@ -8,7 +8,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/utils/feedback';
 import { Colors, TabBar as TabBarTokens, Spacing } from '@/theme/tokens';
 import { AppText } from './AppText';
 import { useScheduleStore } from '@/store/useScheduleStore';
@@ -65,7 +65,7 @@ function TabButton({
           canPreventDefault: true,
         });
         if (!isActive && !event.defaultPrevented) {
-          try { Haptics.selectionAsync(); } catch {}
+          haptic.selection();
           navigation.navigate(tab.name);
         }
       }}
@@ -101,7 +101,7 @@ function CenterAddButton({ isScheduleActive }: { isScheduleActive: boolean }) {
     iconRotate.value = withSpring(90, { damping: 18, stiffness: 220 }, () => {
       iconRotate.value = withSpring(0, { damping: 18, stiffness: 220 });
     });
-    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
+    haptic.medium();
 
     if (isScheduleActive) {
       // Prefill due date with selected day at 09:00

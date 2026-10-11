@@ -7,7 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/utils/feedback';
 import { router } from 'expo-router';
 import { Task, TaskInput, Priority } from '@/types';
 import { Colors, Spacing, Radii } from '@/theme/tokens';
@@ -79,7 +79,7 @@ export function TaskForm({ task, prefillCategoryId, prefillDue }: TaskFormProps)
         await addTask(input);
         showToast('Task added');
       }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      haptic.success();
       router.back();
     } finally {
       setSaving(false);
@@ -95,7 +95,7 @@ export function TaskForm({ task, prefillCategoryId, prefillDue }: TaskFormProps)
       destructive: true,
     });
     if (!ok) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    haptic.medium();
     const snapshot = await deleteTask(task.id);
     router.back();
     if (snapshot) {

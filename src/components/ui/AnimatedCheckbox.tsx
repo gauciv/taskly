@@ -10,7 +10,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/utils/feedback';
 import { Colors } from '@/theme/tokens';
 
 interface AnimatedCheckboxProps {
@@ -38,9 +38,7 @@ export function AnimatedCheckbox({ checked, onToggle, accessibilityLabel }: Anim
   }));
 
   function handlePress() {
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch {}
+    haptic.light();
     onToggle();
   }
 

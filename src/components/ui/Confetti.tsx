@@ -6,6 +6,7 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   runOnJS,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { Colors } from '@/theme/tokens';
 
@@ -59,7 +60,7 @@ function ConfettiParticle({
   t,
 }: {
   particle: Particle;
-  t: Animated.SharedValue<number>;
+  t: SharedValue<number>;
 }) {
   const style = useAnimatedStyle(() => {
     const localT = Math.max(0, t.value - particle.delay / DURATION);

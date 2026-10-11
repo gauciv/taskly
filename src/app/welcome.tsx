@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/utils/feedback';
 import { Colors, Spacing, Radii, SpringConfig } from '@/theme/tokens';
 import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
@@ -30,7 +30,7 @@ export default function WelcomeScreen() {
   async function handleStart() {
     setLoading(true);
     try {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      haptic.success();
       await setUserName(name.trim() || 'Friend');
       await setOnboarded();
       router.replace('/(tabs)');

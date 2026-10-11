@@ -5,7 +5,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { haptic as hapticFn } from '@/utils/feedback';
 
 interface PressableScaleProps extends PressableProps {
   style?: StyleProp<ViewStyle>;
@@ -38,7 +38,7 @@ export function PressableScale({ style, children, haptic, onPress, onPressIn, on
       }}
       onPress={(e) => {
         if (haptic) {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+          hapticFn.light();
         }
         onPress?.(e);
       }}

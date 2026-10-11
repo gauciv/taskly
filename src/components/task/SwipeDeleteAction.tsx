@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import { haptic } from '@/utils/feedback';
 import { Colors, Spacing } from '@/theme/tokens';
 import { AppText } from '@/components/ui/AppText';
 
@@ -14,7 +14,7 @@ export function SwipeDeleteAction({ onDelete }: SwipeDeleteActionProps) {
     <TouchableOpacity
       style={styles.action}
       onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        haptic.medium();
         onDelete();
       }}
       accessibilityLabel="Delete task"
