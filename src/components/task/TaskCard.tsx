@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import Animated, { FadeInDown, FadeOutLeft, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeOutLeft } from 'react-native-reanimated';
 import { Colors, Spacing, Radii, tintedFill } from '@/theme/tokens';
 import { Task, Category } from '@/types';
 import { AppText } from '@/components/ui/AppText';
@@ -37,7 +37,6 @@ function TaskCardInner({ task, category, onPress, onToggle, index = 0 }: TaskCar
     <Animated.View
       entering={FadeInDown.delay(delay).duration(220)}
       exiting={FadeOutLeft.duration(180)}
-      layout={LinearTransition.springify().damping(18)}
     >
       <PressableScale
         onPress={onPress}

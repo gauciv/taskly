@@ -5,7 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { Colors, Spacing, Radii, tintedFill } from '@/theme/tokens';
@@ -92,10 +92,7 @@ export default function HomeScreen() {
               {todayDone} of {todayTotal} done today
             </AppText>
             <View style={styles.progressTrack}>
-              <Animated.View
-                style={[styles.progressFill, { width: `${Math.round(progressPct * 100)}%` as `${number}%` }]}
-                layout={LinearTransition.springify().damping(18)}
-              />
+              <View style={[styles.progressFill, { width: `${Math.round(progressPct * 100)}%` as `${number}%` }]} />
             </View>
           </Animated.View>
         )}

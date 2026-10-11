@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   FlatList,
 } from 'react-native';
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { format, addWeeks, subWeeks, isSameDay, isToday as dfnsIsToday } from 'date-fns';
