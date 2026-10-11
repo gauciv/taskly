@@ -33,11 +33,13 @@ const RIGHT_TABS: TabItem[] = [
 ];
 
 interface TabBarProps {
-  state: { index: number; routes: { name: string }[] };
-  navigation: {
-    navigate: (name: string) => void;
-    emit: (e: { type: string; target?: string; canPreventDefault?: boolean }) => { defaultPrevented?: boolean };
-  };
+  state: { index: number; routes: { name: string; key: string }[] };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  navigation: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  descriptors?: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  insets?: any;
 }
 
 function TabButton({

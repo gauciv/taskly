@@ -24,6 +24,7 @@ import {
   selectOpenCountByCategory,
   selectOverdueCount,
 } from '@/store/selectors';
+import { taskDetailsHref } from '@/utils/routes';
 import type { Category } from '@/types';
 
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
@@ -178,7 +179,7 @@ export default function HomeScreen() {
                   <TaskCard
                     task={task}
                     category={getCat(task.categoryId)}
-                    onPress={() => router.push(`/task/${task.id}`)}
+                    onPress={() => router.push(taskDetailsHref(task.id))}
                     onToggle={() => toggleComplete(task.id)}
                     index={i}
                   />
@@ -263,4 +264,7 @@ const styles = StyleSheet.create({
     gap: Spacing.s2,
   },
   taskWrap: {},
+  catName: {
+    flexShrink: 1,
+  },
 });

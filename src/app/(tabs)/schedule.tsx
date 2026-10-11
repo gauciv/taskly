@@ -19,6 +19,7 @@ import { useTaskStore } from '@/store/useTaskStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { selectTasksForDay, selectDayHasTasks } from '@/store/selectors';
 import { weekDays, formatTime } from '@/utils/date';
+import { taskDetailsHref } from '@/utils/routes';
 import type { Category } from '@/types';
 
 export default function ScheduleScreen() {
@@ -157,7 +158,7 @@ export default function ScheduleScreen() {
                       <TaskCard
                         task={task}
                         category={getCat(task.categoryId)}
-                        onPress={() => router.push(`/task/${task.id}`)}
+                        onPress={() => router.push(taskDetailsHref(task.id))}
                         onToggle={() => toggleComplete(task.id)}
                         index={i}
                       />
@@ -183,7 +184,7 @@ export default function ScheduleScreen() {
                           <TaskCard
                             task={task}
                             category={getCat(task.categoryId)}
-                            onPress={() => router.push(`/task/${task.id}`)}
+                            onPress={() => router.push(taskDetailsHref(task.id))}
                             onToggle={() => toggleComplete(task.id)}
                             index={i}
                           />

@@ -17,6 +17,7 @@ import {
   checkLastNotificationResponse,
   resyncAll,
 } from '@/services/notifications';
+import { taskDetailsHref } from '@/utils/routes';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -35,7 +36,7 @@ export default function RootLayout() {
         await resyncAll(useTaskStore.getState().tasks);
         // Deep-link from cold start tap
         await checkLastNotificationResponse((taskId) => {
-          router.push(`/task/${taskId}`);
+          router.push(taskDetailsHref(taskId));
         });
       } catch {
         // continue even if db or notif fails
@@ -49,7 +50,7 @@ export default function RootLayout() {
   // Notification tap while app is running
   useEffect(() => {
     const unsub = addNotificationTapListener((taskId) => {
-      router.push(`/task/${taskId}`);
+      router.push(taskDetailsHref(taskId));
     });
     return unsub;
   }, []);
@@ -83,6 +84,10 @@ export default function RootLayout() {
             />
             <Stack.Screen
               name="task/[id]"
+              options={{ presentation: 'card', animation: 'slide_from_right' }}
+            />
+            <Stack.Screen
+              name="task/edit/[id]"
               options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
             />
           </Stack>

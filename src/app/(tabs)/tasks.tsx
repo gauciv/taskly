@@ -23,6 +23,7 @@ import { FilterSheet } from '@/components/task/FilterSheet';
 import { useTaskStore } from '@/store/useTaskStore';
 import { showToast } from '@/components/ui/Toast';
 import { selectSortedTasks } from '@/store/selectors';
+import { taskDetailsHref } from '@/utils/routes';
 import { isToday, isOverdue } from '@/utils/date';
 import { useTaskFilters, type StatusFilter } from '@/store/useTaskFilters';
 
@@ -301,7 +302,7 @@ export default function TasksScreen() {
                 <SwipeableTaskCard
                   task={task}
                   category={getCat(task.categoryId)}
-                  onPress={() => router.push(`/task/${task.id}`)}
+                  onPress={() => router.push(taskDetailsHref(task.id))}
                   onToggle={() => handleToggle(task.id)}
                   onDelete={() => handleDelete(task.id)}
                   index={i}
@@ -332,7 +333,7 @@ export default function TasksScreen() {
                     <SwipeableTaskCard
                       task={task}
                       category={getCat(task.categoryId)}
-                      onPress={() => router.push(`/task/${task.id}`)}
+                      onPress={() => router.push(taskDetailsHref(task.id))}
                       onToggle={() => handleToggle(task.id)}
                       onDelete={() => handleDelete(task.id)}
                       index={i}

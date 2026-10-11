@@ -1,0 +1,10 @@
+e4c3836 U2.2: Floating/header + removed; raised center + in tab bar
+f287273 U2.1: ConfirmDialog + ConfirmHost, all destructive actions use it
+11ad053 fix(tasks): clean filter layout and single add button
+3675e3a fix: remove layout animations that conflict with transform in Reanimated 4 subtrees
+cf8d148 fix: resolve Reanimated transform/layout conflict causing crash loop in Expo Go
+b802535 fix: lazy-load expo-notifications to survive Expo Go SDK 53+ import crash
+4641c83 P11: final polish - animated toggle, complete README, P11 audit complete
+fe20658 P10: Settings - animated toggle, profile edit, notifications, data management
+46af855 P9: Notifications
+dbb9e43 P8: Search and filters

@@ -1,0 +1,6 @@
+ M src/app/(tabs)/index.tsx
+ M src/app/(tabs)/tasks.tsx
+ M src/app/_layout.tsx
+ M src/app/task/[id].tsx
+?? git_status.txt
+?? src/app/task/edit/

@@ -1,6 +1,5 @@
 import { Tabs } from 'expo-router';
 import { CustomTabBar } from '@/components/ui/TabBar';
-import { Colors } from '@/theme/tokens';
 
 export default function TabsLayout() {
   return (
@@ -8,7 +7,6 @@ export default function TabsLayout() {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: Colors.bg },
       }}
     >
       <Tabs.Screen name="index" />
