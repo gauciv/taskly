@@ -1,7 +1,15 @@
-import React, { memo } from 'react';
+import React, { memo, useEffect } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import Animated, { FadeInDown, FadeOutLeft } from 'react-native-reanimated';
+import Animated, {
+  FadeInDown,
+  FadeOutLeft,
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated';
 import { Colors, Spacing, Radii, tintedFill } from '@/theme/tokens';
 import { Task, Category } from '@/types';
 import { AppText } from '@/components/ui/AppText';
@@ -9,6 +17,7 @@ import { AnimatedCheckbox } from '@/components/ui/AnimatedCheckbox';
 import { PriorityBadge } from '@/components/ui/PriorityBadge';
 import { PressableScale } from '@/components/ui/PressableScale';
 import { formatDueLabel, isOverdue } from '@/utils/date';
+import { useTaskStore } from '@/store/useTaskStore';
 
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
 
@@ -30,49 +39,82 @@ function TaskCardInner({ task, category, onPress, onToggle, index = 0 }: TaskCar
 
   const delay = Math.min(index, 6) * 40;
 
+  // Highlight pulse (arrival animation on add/edit/restore)
+  const highlightTaskId = useTaskStore((s) => s.highlightTaskId);
+  const highlightNonce  = useTaskStore((s) => s.highlightNonce);
+  const setHighlight    = useTaskStore((s) => s.setHighlight);
+  const isHighlighted   = highlightTaskId === task.id;
+  const borderOpacity   = useSharedValue(0);
+  const cardScale       = useSharedValue(1);
+
+  useEffect(() => {
+    if (!isHighlighted) return;
+    // Pulse: lime border fade in/out + scale nudge
+    borderOpacity.value = withSequence(
+      withTiming(1, { duration: 200 }),
+      withTiming(0, { duration: 800 }),
+    );
+    cardScale.value = withSequence(
+      withSpring(1.02, { damping: 14, stiffness: 280 }),
+      withSpring(1,    { damping: 14, stiffness: 280 }),
+    );
+    const t = setTimeout(() => setHighlight(null), 1300);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHighlighted, highlightNonce]);
+
+  const highlightStyle = useAnimatedStyle(() => ({
+    borderColor: `rgba(217,255,63,${borderOpacity.value})`,
+    borderWidth: 1.5,
+    transform: [{ scale: cardScale.value }],
+  }));
+
   // The outer Animated.View owns enter/exit/layout animations ONLY — no transform.
+  // The highlight Animated.View owns the border/scale pulse — separate node.
   // PressableScale owns the press-scale transform ONLY — no layout prop.
-  // Keeping them on separate nodes avoids the Reanimated "transform overwritten" conflict.
   return (
     <Animated.View
       entering={FadeInDown.delay(delay).duration(220)}
       exiting={FadeOutLeft.duration(180)}
     >
-      <PressableScale
-        onPress={onPress}
-        style={[styles.card, { backgroundColor: cardBg }]}
-      >
-        <View style={styles.left}>
-          {category && (
-            <View style={[styles.pill, { backgroundColor: tintedFill(category.color) }]}>
-              <Feather name={category.icon as FeatherIconName} size={10} color={category.color} />
-              <Text style={[styles.pillText, { color: category.color }]}>{category.name}</Text>
-            </View>
-          )}
-          <AppText
-            variant="title"
-            numberOfLines={2}
-            style={[styles.title, task.completed && styles.titleCompleted]}
-            color={task.completed ? Colors.textMuted : Colors.text}
-          >
-            {task.title}
-          </AppText>
-          <View style={styles.meta}>
-            {dueLabel ? (
-              <View style={styles.dueRow}>
-                <Feather name="clock" size={11} color={dueColor} />
-                <Text style={[styles.dueText, { color: dueColor }]}>{dueLabel}</Text>
+      <Animated.View style={highlightStyle}>
+        <PressableScale
+          onPress={onPress}
+          style={[styles.card, { backgroundColor: cardBg }]}
+        >
+          <View style={styles.left}>
+            {category && (
+              <View style={[styles.pill, { backgroundColor: tintedFill(category.color) }]}>
+                <Feather name={category.icon as FeatherIconName} size={10} color={category.color} />
+                <Text style={[styles.pillText, { color: category.color }]}>{category.name}</Text>
               </View>
-            ) : null}
-            <PriorityBadge priority={task.priority} mode="dot" />
+            )}
+            <AppText
+              variant="title"
+              numberOfLines={2}
+              style={[styles.title, task.completed && styles.titleCompleted]}
+              color={task.completed ? Colors.textMuted : Colors.text}
+            >
+              {task.title}
+            </AppText>
+            <View style={styles.meta}>
+              {dueLabel ? (
+                <View style={styles.dueRow}>
+                  <Feather name="clock" size={11} color={dueColor} />
+                  <Text style={[styles.dueText, { color: dueColor }]}>{dueLabel}</Text>
+                </View>
+              ) : null}
+              <PriorityBadge priority={task.priority} mode="dot" />
+            </View>
           </View>
-        </View>
-        <AnimatedCheckbox
-          checked={task.completed}
-          onToggle={onToggle}
-          accessibilityLabel={`Mark ${task.title} ${task.completed ? 'incomplete' : 'complete'}`}
-        />
-      </PressableScale>
+          <AnimatedCheckbox
+            checked={task.completed}
+            onToggle={onToggle}
+            categoryColor={category?.color}
+            accessibilityLabel={`Mark ${task.title} ${task.completed ? 'incomplete' : 'complete'}`}
+          />
+        </PressableScale>
+      </Animated.View>
     </Animated.View>
   );
 }

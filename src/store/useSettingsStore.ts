@@ -54,6 +54,24 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       achievements,
       achievementsUnlocked: Object.keys(achievements).length,
     });
+
+    // Silently unlock achievements already earned (no overlay, no toast)
+    // Evaluated against current task list after task store hydrates.
+    // We schedule this as a microtask so the task store has a chance to hydrate first.
+    Promise.resolve().then(async () => {
+      try {
+        const { useTaskStore } = await import('./useTaskStore');
+        const tasks = useTaskStore.getState().tasks;
+        if (tasks.length === 0) return; // nothing to evaluate yet
+        const { evaluateAchievements } = await import('@/services/achievements');
+        const newlyUnlocked = evaluateAchievements(tasks, Date.now(), get().achievements);
+        for (const id of newlyUnlocked) {
+          await get().unlockAchievement(id); // persist silently
+        }
+      } catch {
+        // Silent - hydration unlock failure should not crash the app
+      }
+    });
   },
 
   setUserName: async (name) => {

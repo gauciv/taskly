@@ -1,2 +1,3 @@
 npm notice run taskly@1.0.0 npx
 npm notice run 'tsc' --noEmit
+Exit:0

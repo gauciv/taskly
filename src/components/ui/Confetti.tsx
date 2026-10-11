@@ -6,8 +6,8 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   runOnJS,
-  type SharedValue,
 } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { Colors } from '@/theme/tokens';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('screen');

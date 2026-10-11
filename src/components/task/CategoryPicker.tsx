@@ -6,11 +6,13 @@ import {
   TextInput,
   TouchableOpacity,
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { Colors, Spacing, Radii } from '@/theme/tokens';
 import { AppText } from '@/components/ui/AppText';
 import { Chip } from '@/components/ui/Chip';
 import { useTaskStore } from '@/store/useTaskStore';
+import { haptic } from '@/utils/feedback';
 
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
 
@@ -29,6 +31,7 @@ export function CategoryPicker({ selectedId, onSelect }: CategoryPickerProps) {
   const [newColor, setNewColor] = useState(COLOR_SWATCHES[0]);
   const [adding, setAdding] = useState(false);
   const [nameError, setNameError] = useState('');
+  const [lastAddedId, setLastAddedId] = useState<number | null>(null);
 
   async function handleAdd() {
     const trimmed = newName.trim();
@@ -38,7 +41,16 @@ export function CategoryPicker({ selectedId, onSelect }: CategoryPickerProps) {
     setAdding(true);
     setNameError('');
     try {
+      const prevIds = new Set(categories.map((c) => c.id));
       await addCategory({ name: trimmed, color: newColor, icon: 'tag' });
+      // Find newly added category
+      const updated = useTaskStore.getState().categories;
+      const newCat = updated.find((c) => !prevIds.has(c.id));
+      if (newCat) {
+        haptic.selection();
+        setLastAddedId(newCat.id);
+        onSelect(newCat.id); // auto-select
+      }
       setNewName('');
       setExpanded(false);
     } finally {
@@ -54,15 +66,22 @@ export function CategoryPicker({ selectedId, onSelect }: CategoryPickerProps) {
         style={styles.scroller}
         contentContainerStyle={styles.row}
       >
-        {categories.map((cat) => (
-          <Chip
+        {categories.map((cat, i) => (
+          <Animated.View
             key={cat.id}
-            label={cat.name}
-            icon={cat.icon as FeatherIconName}
-            selected={selectedId === cat.id}
-            color={cat.color}
-            onPress={() => onSelect(selectedId === cat.id ? null : cat.id)}
-          />
+            entering={cat.id === lastAddedId ? FadeInDown.springify().damping(16).stiffness(300) : undefined}
+          >
+            <Chip
+              label={cat.name}
+              icon={cat.icon as FeatherIconName}
+              selected={selectedId === cat.id}
+              color={cat.color}
+              onPress={() => {
+                haptic.selection();
+                onSelect(selectedId === cat.id ? null : cat.id);
+              }}
+            />
+          </Animated.View>
         ))}
         <Chip
           label="+ New"
@@ -82,6 +101,7 @@ export function CategoryPicker({ selectedId, onSelect }: CategoryPickerProps) {
               value={newName}
               onChangeText={(v) => { setNewName(v); setNameError(''); }}
               maxLength={30}
+              autoFocus
             />
           </View>
           {nameError ? (

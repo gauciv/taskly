@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -7,12 +7,19 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { haptic } from '@/utils/feedback';
 import { router } from 'expo-router';
 import { Task, TaskInput, Priority } from '@/types';
 import { Colors, Spacing, Radii } from '@/theme/tokens';
 import { AppText } from '@/components/ui/AppText';
-import { Button } from '@/components/ui/Button';
+import { Button, type ButtonStatus } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { CategoryPicker } from './CategoryPicker';
 import { PriorityPicker } from './PriorityPicker';
@@ -20,6 +27,9 @@ import { DueDatePicker } from './DueDatePicker';
 import { useTaskStore } from '@/store/useTaskStore';
 import { showToast } from '@/components/ui/Toast';
 import { confirm } from '@/components/ui/ConfirmDialog';
+
+const TITLE_MAX = 80;
+const TITLE_WARN = 70;
 
 interface TaskFormProps {
   task?: Task;
@@ -43,26 +53,65 @@ export function TaskForm({ task, prefillCategoryId, prefillDue }: TaskFormProps)
   const [dueAt, setDueAt] = useState<number | null>(task?.dueAt ?? prefillDue ?? null);
   const [dueHasTime, setDueHasTime] = useState(task?.dueHasTime ?? false);
   const [titleError, setTitleError] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<ButtonStatus>('idle');
+  const [pastDueWarned, setPastDueWarned] = useState(false);
   const titleRef = useRef<TextInput>(null);
+
+  const titleShakeX = useSharedValue(0);
+  const saveShakeX = useSharedValue(0);
+
+  // Past-due warning: warn once when dueAt + hasTime is in the past
+  const isPastDue = dueAt !== null && dueHasTime && dueAt < Date.now();
+
+  useEffect(() => {
+    if (isPastDue && !pastDueWarned) {
+      haptic.warning();
+      setPastDueWarned(true);
+    }
+    if (!isPastDue) setPastDueWarned(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPastDue]);
+
+  function shakeField(shakeVal: SharedValue<number>) {
+    shakeVal.value = withSequence(
+      withTiming(6,  { duration: 50 }),
+      withTiming(-6, { duration: 50 }),
+      withTiming(6,  { duration: 50 }),
+      withTiming(-6, { duration: 50 }),
+      withTiming(0,  { duration: 50 }),
+    );
+  }
 
   function handleDueChange(at: number | null, hasTime: boolean) {
     setDueAt(at);
     setDueHasTime(hasTime);
+    setPastDueWarned(false);
   }
+
+  const titleShakeStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: titleShakeX.value }],
+  }));
+
+  const saveShakeStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: saveShakeX.value }],
+  }));
 
   async function handleSave() {
     const trimmed = title.trim();
     if (!trimmed) {
       setTitleError('Title is required');
+      haptic.error();
+      shakeField(titleShakeX);
       titleRef.current?.focus();
       return;
     }
-    if (trimmed.length > 80) {
+    if (trimmed.length > TITLE_MAX) {
       setTitleError('Max 80 characters');
+      haptic.error();
+      shakeField(titleShakeX);
       return;
     }
-    setSaving(true);
+    setSaveStatus('loading');
     try {
       const input: TaskInput = {
         title: trimmed,
@@ -72,17 +121,33 @@ export function TaskForm({ task, prefillCategoryId, prefillDue }: TaskFormProps)
         dueAt,
         dueHasTime,
       };
+      let succeeded = false;
       if (isEdit && task) {
         await updateTask(task.id, input);
-        showToast('Task updated');
+        succeeded = true;
       } else {
-        await addTask(input);
-        showToast('Task added');
+        const id = await addTask(input);
+        succeeded = id !== null;
       }
-      haptic.success();
-      router.back();
-    } finally {
-      setSaving(false);
+
+      if (succeeded) {
+        setSaveStatus('success');
+        haptic.success();
+        showToast(isEdit ? 'Task updated' : 'Task added', { type: 'success' });
+        // Give the success animation a moment before closing
+        setTimeout(() => router.back(), 450);
+      } else {
+        // addTask returned null (error already reported inside store)
+        setSaveStatus('error');
+        haptic.error();
+        shakeField(saveShakeX);
+        setTimeout(() => setSaveStatus('idle'), 1500);
+      }
+    } catch {
+      setSaveStatus('error');
+      haptic.error();
+      shakeField(saveShakeX);
+      setTimeout(() => setSaveStatus('idle'), 1500);
     }
   }
 
@@ -105,6 +170,9 @@ export function TaskForm({ task, prefillCategoryId, prefillDue }: TaskFormProps)
       });
     }
   }
+
+  const titleLen = title.length;
+  const counterColor = titleLen >= TITLE_MAX ? Colors.danger : titleLen >= TITLE_WARN ? Colors.warning : Colors.textFaint;
 
   return (
     <KeyboardAvoidingView
@@ -140,23 +208,36 @@ export function TaskForm({ task, prefillCategoryId, prefillDue }: TaskFormProps)
       >
         {/* Title */}
         <View style={styles.section}>
-          <TextInput
-            ref={titleRef}
-            style={[styles.titleInput, titleError ? styles.titleInputError : null]}
-            placeholder="What needs to be done?"
-            placeholderTextColor={Colors.textFaint}
-            value={title}
-            onChangeText={(v) => { setTitle(v); setTitleError(''); }}
-            autoFocus={!isEdit}
-            returnKeyType="next"
-            maxLength={80}
-            accessibilityLabel="Task title"
-          />
-          {titleError ? (
-            <AppText variant="caption" color={Colors.danger} style={styles.fieldError}>
-              {titleError}
+          <Animated.View style={titleShakeStyle}>
+            <TextInput
+              ref={titleRef}
+              style={[
+                styles.titleInput,
+                titleError ? styles.titleInputError : null,
+              ]}
+              placeholder="What needs to be done?"
+              placeholderTextColor={Colors.textFaint}
+              value={title}
+              onChangeText={(v) => {
+                setTitle(v);
+                setTitleError('');
+              }}
+              autoFocus={!isEdit}
+              returnKeyType="next"
+              maxLength={TITLE_MAX}
+              accessibilityLabel="Task title"
+            />
+          </Animated.View>
+          <View style={styles.titleMeta}>
+            {titleError ? (
+              <AppText variant="caption" color={Colors.danger} style={styles.fieldError}>
+                {titleError}
+              </AppText>
+            ) : <View style={styles.fieldErrorPlaceholder} />}
+            <AppText variant="caption" color={counterColor} style={styles.charCount}>
+              {titleLen}/{TITLE_MAX}
             </AppText>
-          ) : null}
+          </View>
         </View>
 
         {/* Category */}
@@ -175,6 +256,11 @@ export function TaskForm({ task, prefillCategoryId, prefillDue }: TaskFormProps)
         <View style={styles.fieldGroup}>
           <AppText variant="label" color={Colors.textMuted} style={styles.label}>Due date</AppText>
           <DueDatePicker dueAt={dueAt} dueHasTime={dueHasTime} onChange={handleDueChange} />
+          {isPastDue && (
+            <AppText variant="caption" color={Colors.warning} style={styles.pastDueHint}>
+              This time has already passed
+            </AppText>
+          )}
         </View>
 
         {/* Notes */}
@@ -197,14 +283,16 @@ export function TaskForm({ task, prefillCategoryId, prefillDue }: TaskFormProps)
 
       {/* Sticky Save button */}
       <View style={styles.footer}>
-        <Button
-          label={isEdit ? 'Save Changes' : 'Save Task'}
-          onPress={handleSave}
-          disabled={!title.trim()}
-          loading={saving}
-          fullWidth
-          size="lg"
-        />
+        <Animated.View style={[styles.saveWrap, saveShakeStyle]}>
+          <Button
+            label={isEdit ? 'Save Changes' : 'Save Task'}
+            onPress={handleSave}
+            disabled={saveStatus === 'loading'}
+            status={saveStatus}
+            fullWidth
+            size="lg"
+          />
+        </Animated.View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -235,15 +323,28 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'Poppins_600SemiBold',
     color: Colors.text,
-    borderBottomWidth: 1,
+    borderBottomWidth: 1.5,
     borderColor: Colors.border,
     paddingVertical: Spacing.s2,
   },
   titleInputError: {
     borderColor: Colors.danger,
   },
-  fieldError: {
+  titleMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginTop: 4,
+  },
+  fieldError: {},
+  fieldErrorPlaceholder: { flex: 1 },
+  charCount: {
+    textAlign: 'right',
+    flexShrink: 0,
+  },
+  pastDueHint: {
+    marginTop: 6,
+    paddingHorizontal: Spacing.screenH,
   },
   fieldGroup: {
     marginTop: Spacing.s5,
@@ -273,5 +374,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: Colors.border,
     backgroundColor: Colors.bg,
+  },
+  saveWrap: {
+    width: '100%',
   },
 });

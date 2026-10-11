@@ -8,25 +8,28 @@ import {
   insertTaskWithId,
 } from '@/db/tasksRepo';
 import { getAllCategories, insertCategory } from '@/db/categoriesRepo';
-import { showToast } from '@/components/ui/Toast';
 import {
   syncTaskNotification,
   cancelTaskNotification,
 } from '@/services/notifications';
+import { reportError } from '@/utils/errors';
 
 interface TaskStore {
   tasks: Task[];
   categories: Category[];
   hydrated: boolean;
+  highlightTaskId: number | null;
+  highlightNonce: number;
   hydrate: () => Promise<void>;
-  addTask: (input: TaskInput) => Promise<void>;
+  addTask: (input: TaskInput) => Promise<number | null>;
   updateTask: (id: number, patch: Partial<TaskInput> & { notificationId?: string | null }) => Promise<void>;
-  toggleComplete: (id: number) => Promise<void>;
+  toggleComplete: (id: number, originX?: number, originY?: number) => Promise<void>;
   deleteTask: (id: number) => Promise<TaskSnapshot | null>;
   restoreTask: (snapshot: TaskSnapshot) => Promise<void>;
   addCategory: (cat: { name: string; color: string; icon: string }) => Promise<void>;
   clearCompleted: () => Promise<void>;
   resetAll: () => Promise<void>;
+  setHighlight: (id: number | null) => void;
 }
 
 // Note: loadSampleData removed per U2.10
@@ -35,24 +38,31 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: [],
   categories: [],
   hydrated: false,
+  highlightTaskId: null,
+  highlightNonce: 0,
 
   hydrate: async () => {
     const [tasks, categories] = await Promise.all([getAllTasks(), getAllCategories()]);
     set({ tasks, categories, hydrated: true });
   },
 
+  setHighlight: (id) => {
+    set((s) => ({ highlightTaskId: id, highlightNonce: id !== null ? s.highlightNonce + 1 : s.highlightNonce }));
+  },
+
   addTask: async (input) => {
     try {
       const task = await insertTask(input);
-      set((s) => ({ tasks: [task, ...s.tasks] }));
+      set((s) => ({ tasks: [task, ...s.tasks], highlightTaskId: task.id, highlightNonce: s.highlightNonce + 1 }));
       await syncTaskNotification(task);
-      // Sync notification inbox for new task
       try {
         const { useNotificationStore } = await import('./useNotificationStore');
         await useNotificationStore.getState().syncInbox(Date.now());
       } catch {}
-    } catch {
-      showToast("Couldn't save. Try again.");
+      return task.id;
+    } catch (err) {
+      reportError(err, { context: 'addTask', userMessage: "Couldn't save your task", retry: () => get().addTask(input) });
+      return null;
     }
   },
 
@@ -63,20 +73,19 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? optimistic : t)) }));
     try {
       const updated = await updateTask(id, patch);
-      set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? updated : t)) }));
+      set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? updated : t)), highlightTaskId: id, highlightNonce: s.highlightNonce + 1 }));
       await syncTaskNotification(updated);
-      // Sync notification inbox after update
       try {
         const { useNotificationStore } = await import('./useNotificationStore');
         await useNotificationStore.getState().syncInbox(Date.now());
       } catch {}
-    } catch {
+    } catch (err) {
       set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? prev : t)) }));
-      showToast("Couldn't save. Try again.");
+      reportError(err, { context: 'updateTask', userMessage: "Couldn't save your task", retry: () => get().updateTask(id, patch) });
     }
   },
 
-  toggleComplete: async (id) => {
+  toggleComplete: async (id, originX, originY) => {
     const task = get().tasks.find((t) => t.id === id);
     if (!task) return;
     const now = Date.now();
@@ -89,17 +98,21 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? updated : t)) }));
       if (completed) {
         await cancelTaskNotification(updated);
-        // Mark notification inbox entries read for this task
         try {
           const { useNotificationStore } = await import('./useNotificationStore');
           await useNotificationStore.getState().markReadForTask(id);
         } catch {}
+        // Fire celebration/feedback
+        const { onTaskCompleted } = await import('@/services/feedback');
+        await onTaskCompleted(optimistic, get().tasks, originX, originY);
       } else {
         await syncTaskNotification(updated);
+        const { onTaskUncompleted } = await import('@/services/feedback');
+        onTaskUncompleted();
       }
-    } catch {
+    } catch (err) {
       set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? task : t)) }));
-      showToast("Couldn't save. Try again.");
+      reportError(err, { context: 'toggleComplete', userMessage: "Couldn't save. Try again", retry: () => get().toggleComplete(id) });
     }
   },
 
@@ -110,22 +123,22 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     try {
       await dbDeleteTask(id);
       await cancelTaskNotification(snapshot);
-    } catch {
+    } catch (err) {
       set((s) => ({ tasks: [snapshot, ...s.tasks] }));
-      showToast("Couldn't delete. Try again.");
+      reportError(err, { context: 'deleteTask', userMessage: "Couldn't delete. Try again", retry: () => get().deleteTask(id) });
       return null;
     }
     return snapshot;
   },
 
   restoreTask: async (snapshot) => {
-    set((s) => ({ tasks: [snapshot, ...s.tasks] }));
+    set((s) => ({ tasks: [snapshot, ...s.tasks], highlightTaskId: snapshot.id, highlightNonce: s.highlightNonce + 1 }));
     try {
       await insertTaskWithId(snapshot);
       await syncTaskNotification(snapshot);
-    } catch {
+    } catch (err) {
       set((s) => ({ tasks: s.tasks.filter((t) => t.id !== snapshot.id) }));
-      showToast("Couldn't restore. Try again.");
+      reportError(err, { context: 'restoreTask', userMessage: "Couldn't restore. Try again", retry: () => get().restoreTask(snapshot) });
     }
   },
 
@@ -133,8 +146,8 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     try {
       const cat = await insertCategory(name, color, icon);
       set((s) => ({ categories: [...s.categories, cat] }));
-    } catch {
-      showToast("Couldn't save category. Try again.");
+    } catch (err) {
+      reportError(err, { context: 'addCategory', userMessage: "Couldn't save category. Try again" });
     }
   },
 
@@ -145,26 +158,28 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       const db = await import('@/db/client').then((m) => m.getDb());
       await (await db).execAsync('DELETE FROM tasks WHERE completed = 1');
       for (const t of completed) await cancelTaskNotification(t);
-    } catch {
+    } catch (err) {
       set((s) => ({ tasks: [...s.tasks, ...completed] }));
-      showToast("Couldn't clear. Try again.");
+      reportError(err, { context: 'clearCompleted', userMessage: "Couldn't clear. Try again", retry: () => get().clearCompleted() });
     }
   },
 
   resetAll: async () => {
-    const db = await import('@/db/client').then((m) => m.getDb());
-    await (await db).execAsync('DELETE FROM tasks');
-    await (await db).execAsync('DELETE FROM categories');
-    await (await db).execAsync('DELETE FROM notifications');
-    await (await db).execAsync("DELETE FROM settings WHERE key != 'onboarded'");
-    // Re-run migrations to re-seed
-    await import('@/db/migrations').then((m) => m.runMigrations());
-    const [tasks, categories] = await Promise.all([getAllTasks(), getAllCategories()]);
-    set({ tasks, categories });
-    // Clear notification store
     try {
-      const { useNotificationStore } = await import('./useNotificationStore');
-      useNotificationStore.setState({ items: [], unreadCount: 0 });
-    } catch {}
+      const db = await import('@/db/client').then((m) => m.getDb());
+      await (await db).execAsync('DELETE FROM tasks');
+      await (await db).execAsync('DELETE FROM categories');
+      await (await db).execAsync('DELETE FROM notifications');
+      await (await db).execAsync("DELETE FROM settings WHERE key != 'onboarded'");
+      await import('@/db/migrations').then((m) => m.runMigrations());
+      const [tasks, categories] = await Promise.all([getAllTasks(), getAllCategories()]);
+      set({ tasks, categories });
+      try {
+        const { useNotificationStore } = await import('./useNotificationStore');
+        useNotificationStore.setState({ items: [], unreadCount: 0 });
+      } catch {}
+    } catch (err) {
+      reportError(err, { context: 'resetAll', userMessage: "Couldn't reset app data. Try again", retry: () => get().resetAll() });
+    }
   },
 }));

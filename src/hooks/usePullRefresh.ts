@@ -46,7 +46,10 @@ export function usePullRefresh() {
       }
       haptic.success();
     } catch {
-      showToast("Couldn't refresh. Try again.");
+      showToast("Couldn't refresh. Try again.", {
+        type: 'error',
+        action: { label: 'Retry', onPress: onRefresh },
+      });
     } finally {
       setRefreshing(false);
     }

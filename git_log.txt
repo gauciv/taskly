@@ -1,10 +1,5 @@
+7c8d736 U3.1: Fix TSC errors (Confetti SharedValue, PressableScale haptic naming, TabBar Haptics->haptic)
+39e5637 U3.1: Settings chip clipping fixed + animated-height audit + capability-based banner
+8c34499 U2.11: Final QA – tsc clean, bundle 2317 modules, all grep checks pass
+3562dcb U2.4+U2.5+U2.6: Task Details screen, compact activity row, weekly activity chart
 b29ccbf U2.3: Route restructure - fix TSC errors, details at task/[id], edit at task/edit/[id], routes helper, nav updated
-e4c3836 U2.2: Floating/header + removed; raised center + in tab bar
-f287273 U2.1: ConfirmDialog + ConfirmHost, all destructive actions use it
-11ad053 fix(tasks): clean filter layout and single add button
-3675e3a fix: remove layout animations that conflict with transform in Reanimated 4 subtrees
-cf8d148 fix: resolve Reanimated transform/layout conflict causing crash loop in Expo Go
-b802535 fix: lazy-load expo-notifications to survive Expo Go SDK 53+ import crash
-4641c83 P11: final polish - animated toggle, complete README, P11 audit complete
-fe20658 P10: Settings - animated toggle, profile edit, notifications, data management
-46af855 P9: Notifications

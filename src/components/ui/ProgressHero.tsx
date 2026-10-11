@@ -8,9 +8,9 @@ import Animated, {
   withDelay,
   Easing,
   FadeInDown,
-  SharedValue,
   useReducedMotion,
 } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Spacing, Radii, Typography } from '@/theme/tokens';

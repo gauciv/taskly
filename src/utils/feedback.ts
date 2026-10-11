@@ -4,21 +4,23 @@
  * All methods respect the haptics_enabled setting and never throw.
  */
 import * as Haptics from 'expo-haptics';
-import { getSetting } from '@/db/settingsRepo';
 
-async function isEnabled(): Promise<boolean> {
+function isEnabled(): boolean {
   try {
-    const val = await getSetting('haptics_enabled');
-    return val !== '0';
+    // Read from in-memory store (sync) — avoids slow DB read per haptic call
+    const { useSettingsStore } = require('@/store/useSettingsStore') as typeof import('@/store/useSettingsStore');
+    return useSettingsStore.getState().hapticsEnabled;
   } catch {
     // swallowed intentionally — haptics failure must never crash the app
     return true;
   }
 }
 
-async function run(fn: () => Promise<void>): Promise<void> {
+function run(fn: () => Promise<void>): void {
   try {
-    if (await isEnabled()) await fn();
+    if (isEnabled()) fn().catch(() => {
+      // swallowed intentionally — haptics failure must never crash the app
+    });
   } catch {
     // swallowed intentionally — haptics failure must never crash the app
   }
