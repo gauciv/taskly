@@ -1,5 +1,5 @@
 # Taskly: Build Progress
-Status: IN PROGRESS   <!-- set to COMPLETE only after P11.8 -->
+Status: COMPLETE   <!-- set to COMPLETE only after P11.8 -->
 Current phase: P11
 Last updated: 2026-10-11
 
@@ -15,7 +15,7 @@ Last updated: 2026-10-11
 - P8:  [x] 8.1 [x] 8.2 [x] 8.3 [x] 8.4 [x] 8.5
 - P9:  [x] 9.1 [x] 9.2 [x] 9.3 [x] 9.4 [x] 9.5 [x] 9.6 [x] 9.7
 - P10: [x] 10.1 [x] 10.2 [x] 10.3 [x] 10.4 [x] 10.5
-- P11: [ ] 11.0 [ ] 11.1 [ ] 11.2 [ ] 11.3 [ ] 11.4 [ ] 11.5 [ ] 11.6 [ ] 11.7 [ ] 11.8
+- P11: [x] 11.0 [x] 11.1 [x] 11.2 [x] 11.3 [x] 11.4 [x] 11.5 [x] 11.6 [x] 11.7 [x] 11.8
 
 ## Phase commits
 (one line per phase: `P<n> – <git short hash> – <date>`)
@@ -25,6 +25,8 @@ Last updated: 2026-10-11
 - reactCompiler experiment removed from app.json (can cause issues with strict Reanimated usage).
 - Design reference image was available in run 1; UI based on it.
 - ReanimatedSwipeable from react-native-gesture-handler/ReanimatedSwipeable (confirmed present in v2.32.0).
+- Settings screen uses a fully custom animated toggle (Reanimated interpolateColor + withSpring thumb translation) instead of the stock RN Switch, matching the dark design system.
+- P11 audit: all screens verified against the design system; no stock-looking controls; custom animated toggle replaces Switch; README updated with full feature table and architecture description.
 
 ## Known issues
 (non-blocking bugs or warnings)
