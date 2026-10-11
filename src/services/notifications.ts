@@ -62,14 +62,33 @@ async function ensureChannel(): Promise<void> {
 export async function ensurePermission(): Promise<boolean> {
   try {
     const n = getNotif();
-    if (!n) return false;
+    if (!n) {
+      // Module unavailable → unsupported (Expo Go)
+      const { useNotificationStatus } = await import('@/store/useNotificationStatus');
+      useNotificationStatus.getState().setStatus('unsupported');
+      return false;
+    }
     const asked = await getSetting('notif_asked');
     if (asked === '1') {
       const { status } = await n.getPermissionsAsync();
+      if (status !== 'granted') {
+        const { useNotificationStatus } = await import('@/store/useNotificationStatus');
+        useNotificationStatus.getState().setStatus('permission_denied');
+      } else {
+        const { useNotificationStatus } = await import('@/store/useNotificationStatus');
+        useNotificationStatus.getState().setStatus(null);
+      }
       return status === 'granted';
     }
     await setSetting('notif_asked', '1');
     const { status } = await n.requestPermissionsAsync();
+    if (status !== 'granted') {
+      const { useNotificationStatus } = await import('@/store/useNotificationStatus');
+      useNotificationStatus.getState().setStatus('permission_denied');
+    } else {
+      const { useNotificationStatus } = await import('@/store/useNotificationStatus');
+      useNotificationStatus.getState().setStatus(null);
+    }
     return status === 'granted';
   } catch {
     return false;
@@ -96,7 +115,11 @@ async function getFireTime(task: Task): Promise<Date | null> {
 export async function syncTaskNotification(task: Task): Promise<void> {
   try {
     const n = getNotif();
-    if (!n) return;
+    if (!n) {
+      const { useNotificationStatus } = await import('@/store/useNotificationStatus');
+      useNotificationStatus.getState().setStatus('unsupported');
+      return;
+    }
     const enabled = (await getSetting('notifications_enabled')) !== '0';
     if (!enabled || task.completed) {
       await cancelTaskNotification(task);
@@ -126,7 +149,10 @@ export async function syncTaskNotification(task: Task): Promise<void> {
     });
     const { updateTask } = await import('@/db/tasksRepo');
     await updateTask(task.id, { notificationId: `task-${task.id}` });
-  } catch {}
+  } catch {
+    const { useNotificationStatus } = await import('@/store/useNotificationStatus');
+    useNotificationStatus.getState().setStatus('unsupported');
+  }
 }
 
 export async function cancelTaskNotification(

@@ -42,6 +42,27 @@ Last updated: 2026-10-11
 - [x] U2.10 Settings cleanup (no "Remind me" label, no sample data, confirmations, About line, README)
 - [x] U2.11 Final QA: tsc, lint, bundle, visual audit vs reference image, grep checks, commit
 
+## UI Update 3
+- [ ] U3.1  Settings chip clipping fixed + animated-height audit + capability-based banner (useNotificationStatus)
+- [ ] U3.2  Home hero card redesign (compact ring + mini week bars + streak pill, selectStreak)
+- [ ] U3.3  Feedback foundation: haptics map, logger, Toast v2, reportError, Feedback settings, motion prefs
+- [ ] U3.4  Error handling everywhere: rollback + Retry, ErrorScreen, ErrorBoundary, form validation visuals, permission feedback, catch audit
+- [ ] U3.5  Success micro-interactions: Button status, save morph, highlight pulse, ring burst, settings Saved, empty-state float
+- [ ] U3.6  Celebration engine: Confetti, CelebrationOverlay, onTaskCompleted logic, contextual toasts, rate limits
+- [ ] U3.7  Achievements: unlock logic, Achievements screen, Settings entry, streak pill link, unlock overlay
+- [ ] U3.8  Final QA: tsc, lint, bundle, visual audit vs reference image, grep checks, README, commit
+
+## Decisions
+- U3: selectStreak counts consecutive local days with ≥1 completed task (by completed_at) ending today or yesterday if no task completed today yet.
+- U3: Deleting completed tasks can lower derived stats (streaks, totals); noted in code.
+- U3: useNotificationStatus is an in-memory zustand store (not persisted) reset on app launch.
+- U3: Toast v2 replaces old Toast entirely; showToast signature extended with optional type param (backward compatible).
+- U3: CelebrationOverlay and Confetti mounted in root layout above Stack/ToastHost.
+- U3: Achievements stored as JSON under settings key "achievements".
+- U3: useCelebrationStore queue max 2, achievement > all-done > streak > default priority.
+- U3: ErrorScreen used for startup failure and ErrorBoundary; raw error shown only in __DEV__.
+- U3: "last_all_done_day" persisted in settings to fire all-done overlay at most once per day.
+
 ## Known issues
 (non-blocking bugs or warnings)
 

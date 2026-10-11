@@ -10,13 +10,14 @@ import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, Radii, TabBar as TabBarTokens, tintedFill } from '@/theme/tokens';import { Screen } from '@/components/ui/Screen';
+import { Colors, Spacing, Radii, TabBar as TabBarTokens, tintedFill } from '@/theme/tokens';
+import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { IconButton } from '@/components/ui/IconButton';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { TaskCard } from '@/components/task/TaskCard';
-import { WeeklyActivityChart } from '@/components/ui/WeeklyActivityChart';
+import { ProgressHero } from '@/components/ui/ProgressHero';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
@@ -24,6 +25,7 @@ import {
   selectTodayAndOverdue,
   selectOpenCountByCategory,
   selectWeeklyActivity,
+  selectStreak,
 } from '@/store/selectors';
 import { taskDetailsHref, notificationsHref } from '@/utils/routes';
 import { usePullRefresh } from '@/hooks/usePullRefresh';
@@ -48,9 +50,10 @@ export default function HomeScreen() {
 
   const todayTasks = useMemo(() => selectTodayAndOverdue(tasks), [tasks]);
   const catCounts = useMemo(() => selectOpenCountByCategory(tasks, categories), [tasks, categories]);
-  // eslint-disable-next-line react-hooks/purity
   const weeklyActivity = useMemo(() => selectWeeklyActivity(tasks, Date.now()), [tasks]);
-  const unreadCount = useNotificationStore((s) => s.unreadCount);  const hasTasks = tasks.length > 0;
+  const streak = useMemo(() => selectStreak(tasks, Date.now()), [tasks]);
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
+  const hasTasks = tasks.length > 0;
   const topCats = catCounts.slice(0, 6);
   const todaySlice = todayTasks.slice(0, 5);
 
@@ -94,9 +97,13 @@ export default function HomeScreen() {
           />
         </Animated.View>
 
-        {/* Weekly Activity chart (replaces progress bar) */}
+        {/* Progress Hero card */}
         {hasTasks && (
-          <WeeklyActivityChart data={weeklyActivity} hasTasks={hasTasks} />
+          <ProgressHero
+            data={weeklyActivity}
+            streak={streak}
+            hasTasks={hasTasks}
+          />
         )}
 
         {/* Recent Activity – compact horizontal row */}
@@ -173,7 +180,6 @@ function CompactCatCard({ category, count }: { category: Category; count: number
   const catColor = category.color;
   return (
     <View style={[styles.notchCompact, { backgroundColor: tintedFill(catColor), borderColor: catColor + '44' }]}>
-      {/* notch top-right */}
       <View style={[styles.notchCorner, { borderBottomColor: tintedFill(catColor) }]} />
       <View style={[styles.notchCornerBg, { borderBottomColor: Colors.bg }]} />
 

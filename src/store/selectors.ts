@@ -118,3 +118,63 @@ export function selectWeeklyActivity(tasks: Task[], now: number): WeeklyActivity
 
   return { days, total, previousTotal, todayDone, todayTotal };
 }
+
+// ── Streak selector ───────────────────────────────────────────────────────────
+export interface StreakResult {
+  current: number;
+  best: number;
+}
+
+/**
+ * Consecutive local days with ≥1 completed task (by completedAt), ending today.
+ * If nothing is completed today, we also check if yesterday has completions
+ * (so the streak doesn't break at midnight before the first task of the day).
+ * Note: deleting completed tasks can lower derived stats.
+ */
+export function selectStreak(tasks: Task[], now: number): StreakResult {
+  const todayStart = startOfDay(new Date(now)).getTime();
+
+  // Build a Set of day-starts that have at least one completed task
+  const completedDays = new Set<number>();
+  for (const t of tasks) {
+    if (t.completedAt !== null) {
+      completedDays.add(startOfDay(new Date(t.completedAt)).getTime());
+    }
+  }
+
+  // Current streak: start from today, walk backwards
+  let anchor = todayStart;
+  // If nothing completed today, start from yesterday (grace period)
+  if (!completedDays.has(todayStart)) {
+    const yesterdayStart = todayStart - 86400000;
+    if (!completedDays.has(yesterdayStart)) {
+      return { current: 0, best: calcBestStreak(completedDays) };
+    }
+    anchor = yesterdayStart;
+  }
+
+  let current = 0;
+  let cursor = anchor;
+  while (completedDays.has(cursor)) {
+    current++;
+    cursor -= 86400000;
+  }
+
+  return { current, best: Math.max(current, calcBestStreak(completedDays)) };
+}
+
+function calcBestStreak(completedDays: Set<number>): number {
+  if (completedDays.size === 0) return 0;
+  const sorted = Array.from(completedDays).sort((a, b) => a - b);
+  let best = 1;
+  let run = 1;
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] - sorted[i - 1] === 86400000) {
+      run++;
+      best = Math.max(best, run);
+    } else {
+      run = 1;
+    }
+  }
+  return best;
+}

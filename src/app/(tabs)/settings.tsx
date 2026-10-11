@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   Pressable,
+  Linking,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -14,11 +15,13 @@ import Animated, {
   withTiming,
   interpolateColor,
   FadeInDown,
-  FadeOutUp,
+  FadeOut,
+  LinearTransition,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
 import Constants from 'expo-constants';
-import { Colors, Spacing, Radii, SpringConfig } from '@/theme/tokens';
+import { Feather } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { Colors, Spacing, Radii, SpringConfig, tintedFill } from '@/theme/tokens';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { Chip } from '@/components/ui/Chip';
@@ -27,6 +30,9 @@ import { confirm } from '@/components/ui/ConfirmDialog';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useTaskStore } from '@/store/useTaskStore';
 import { cancelTaskNotification } from '@/services/notifications';
+import { useNotificationStatus } from '@/store/useNotificationStatus';
+import { haptic } from '@/utils/feedback';
+import { achievementsHref } from '@/utils/routes';
 
 // ── Animated Toggle Switch ────────────────────────────────────────────────────
 interface ToggleSwitchProps {
@@ -55,7 +61,6 @@ function ToggleSwitch({ value, onValueChange, accessibilityLabel }: ToggleSwitch
     ),
   }));
 
-  // Keep progress in sync with external value
   React.useEffect(() => {
     // eslint-disable-next-line react-hooks/immutability
     progress.value = withSpring(value ? 1 : 0, SpringConfig);
@@ -63,7 +68,7 @@ function ToggleSwitch({ value, onValueChange, accessibilityLabel }: ToggleSwitch
   }, [value]);
 
   function handlePress() {
-    try { Haptics.selectionAsync(); } catch {}
+    haptic.selection();
     onValueChange(!value);
   }
 
@@ -82,7 +87,7 @@ function ToggleSwitch({ value, onValueChange, accessibilityLabel }: ToggleSwitch
   );
 }
 
-// ── Animated chips reveal ─────────────────────────────────────────────────────
+// ── Animated chips reveal — fixed: no hard-coded height ──────────────────────
 interface OffsetChipsProps {
   visible: boolean;
   reminderOffsetMin: 0 | 10 | 60;
@@ -91,29 +96,16 @@ interface OffsetChipsProps {
 
 type OffsetOption = { label: string; value: 0 | 10 | 60 };
 const OFFSET_OPTIONS: OffsetOption[] = [
-  { label: 'At due time', value: 0 },
-  { label: '10 min before', value: 10 },
-  { label: '1 hour before', value: 60 },
+  { label: 'At due time',    value: 0 },
+  { label: '10 min before',  value: 10 },
+  { label: '1 hour before',  value: 60 },
 ];
 
 function OffsetChips({ visible, reminderOffsetMin, onSelect }: OffsetChipsProps) {
-  const heightAnim = useSharedValue(visible ? 1 : 0);
-  const opacityAnim = useSharedValue(visible ? 1 : 0);
-
-  React.useEffect(() => {
-    heightAnim.value = withTiming(visible ? 1 : 0, { duration: 250 });
-    opacityAnim.value = withTiming(visible ? 1 : 0, { duration: 200 });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
-
-  const containerStyle = useAnimatedStyle(() => ({
-    maxHeight: heightAnim.value * 72,
-    opacity: opacityAnim.value,
-    overflow: 'hidden',
-  }));
-
+  if (!visible) return null;
   return (
-    <Animated.View style={containerStyle}>
+    // FadeInDown / FadeOut on the wrapper; LinearTransition on the card handles reflow
+    <Animated.View entering={FadeInDown.duration(220)} exiting={FadeOut.duration(180)}>
       <View style={styles.chipRow}>
         {OFFSET_OPTIONS.map((opt) => (
           <Chip
@@ -129,9 +121,50 @@ function OffsetChips({ visible, reminderOffsetMin, onSelect }: OffsetChipsProps)
   );
 }
 
+// ── Notification capability banner ────────────────────────────────────────────
+function NotifCapabilityBanner() {
+  const reason = useNotificationStatus((s) => s.reason);
+  if (!reason) return null;
+
+  const isPermission = reason === 'permission_denied';
+  const icon: React.ComponentProps<typeof Feather>['name'] = isPermission ? 'alert-triangle' : 'info';
+  const msg = isPermission
+    ? 'Notification permission is off.'
+    : "Reminders can't be scheduled on this device or app build.";
+
+  return (
+    <Animated.View
+      entering={FadeInDown.duration(220)}
+      exiting={FadeOut.duration(180)}
+      style={styles.capabilityBanner}
+    >
+      <Feather name={icon} size={13} color={Colors.warning} style={{ marginTop: 1 }} />
+      <AppText variant="caption" color={Colors.warning} style={styles.bannerText}>
+        {msg}
+      </AppText>
+      {isPermission && (
+        <TouchableOpacity
+          onPress={() => Linking.openSettings()}
+          accessibilityLabel="Open system settings"
+          accessibilityRole="button"
+        >
+          <AppText variant="caption" color={Colors.lime} style={styles.bannerAction}>
+            Open settings
+          </AppText>
+        </TouchableOpacity>
+      )}
+    </Animated.View>
+  );
+}
+
 // ── Section helpers ───────────────────────────────────────────────────────────
 function Card({ children }: { children: React.ReactNode }) {
-  return <View style={styles.card}>{children}</View>;
+  // LinearTransition lets the card resize smoothly when chips appear/disappear
+  return (
+    <Animated.View style={styles.card} layout={LinearTransition.springify().damping(18).stiffness(200)}>
+      {children}
+    </Animated.View>
+  );
 }
 
 function CardRow({ children }: { children: React.ReactNode }) {
@@ -152,9 +185,13 @@ export default function SettingsScreen() {
     userName,
     notificationsEnabled,
     reminderOffsetMin,
+    celebrationsEnabled,
+    hapticsEnabled,
     setUserName,
     setNotificationsEnabled,
     setReminderOffset,
+    setCelebrationsEnabled,
+    setHapticsEnabled,
   } = useSettingsStore();
 
   const { tasks, clearCompleted, resetAll } = useTaskStore();
@@ -162,10 +199,17 @@ export default function SettingsScreen() {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(userName);
   const [savingName, setSavingName] = useState(false);
+  const [nameSaved, setNameSaved] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
   const completedCount = tasks.filter((t) => t.completed).length;
+  const unlockedCount = useTaskStore((s) =>
+    s.tasks.length > 0 ? undefined : undefined
+  );
+
+  // Achievements unlock count from settings store
+  const achievementsUnlocked = useSettingsStore((s) => s.achievementsUnlocked);
 
   async function handleSaveName() {
     setSavingName(true);
@@ -173,6 +217,9 @@ export default function SettingsScreen() {
     await setUserName(trimmed);
     setSavingName(false);
     setEditingName(false);
+    setNameSaved(true);
+    showToast('Name saved', { type: 'success' });
+    setTimeout(() => setNameSaved(false), 1200);
   }
 
   async function handleClearCompleted() {
@@ -184,8 +231,9 @@ export default function SettingsScreen() {
       destructive: true,
     });
     if (!ok) return;
+    haptic.medium();
     await clearCompleted();
-    showToast('Completed tasks cleared');
+    showToast(`${completedCount} task${completedCount === 1 ? '' : 's'} cleared`, { type: 'success' });
   }
 
   async function handleResetAll() {
@@ -196,11 +244,12 @@ export default function SettingsScreen() {
       destructive: true,
     });
     if (!ok) return;
+    haptic.medium();
     for (const t of tasks) {
       await cancelTaskNotification(t);
     }
     await resetAll();
-    showToast('App reset');
+    showToast('App reset', { type: 'info' });
   }
 
   return (
@@ -259,6 +308,52 @@ export default function SettingsScreen() {
           </CardRow>
         </Card>
 
+        {/* Rewards */}
+        <SectionLabel label="Rewards" />
+        <Card>
+          <TouchableOpacity
+            style={styles.navRow}
+            onPress={() => router.push(achievementsHref)}
+            accessibilityLabel="View achievements"
+            accessibilityRole="button"
+          >
+            <View style={styles.navRowLeft}>
+              <View style={[styles.navIconTile, { backgroundColor: tintedFill(Colors.lime) }]}>
+                <Feather name="award" size={16} color={Colors.lime} />
+              </View>
+              <AppText variant="label" color={Colors.text}>Achievements</AppText>
+            </View>
+            <View style={styles.navRowRight}>
+              <AppText variant="caption" color={Colors.textMuted}>
+                {achievementsUnlocked} of 6 unlocked
+              </AppText>
+              <Feather name="chevron-right" size={16} color={Colors.textFaint} />
+            </View>
+          </TouchableOpacity>
+        </Card>
+
+        {/* Feedback */}
+        <SectionLabel label="Feedback" />
+        <Card>
+          <CardRow>
+            <AppText variant="label" color={Colors.text}>Celebrations</AppText>
+            <ToggleSwitch
+              value={celebrationsEnabled}
+              onValueChange={setCelebrationsEnabled}
+              accessibilityLabel="Enable celebrations"
+            />
+          </CardRow>
+          <View style={styles.divider} />
+          <CardRow>
+            <AppText variant="label" color={Colors.text}>Haptic feedback</AppText>
+            <ToggleSwitch
+              value={hapticsEnabled}
+              onValueChange={setHapticsEnabled}
+              accessibilityLabel="Enable haptic feedback"
+            />
+          </CardRow>
+        </Card>
+
         {/* Notifications */}
         <SectionLabel label="Notifications" />
         <Card>
@@ -271,23 +366,23 @@ export default function SettingsScreen() {
             />
           </CardRow>
 
-          {/* Animated timing chips — visible only when toggle is on */}
+          {/* Animated timing chips — no fixed height, wraps naturally */}
           <OffsetChips
             visible={notificationsEnabled}
             reminderOffsetMin={reminderOffsetMin}
             onSelect={setReminderOffset}
           />
 
+          {/* Capability-based banner — shown only when something failed */}
+          <NotifCapabilityBanner />
+
           {!notificationsEnabled && (
-            <Animated.View entering={FadeInDown.duration(200)} exiting={FadeOutUp.duration(180)}>
+            <Animated.View entering={FadeInDown.duration(200)} exiting={FadeOut.duration(180)}>
               <AppText variant="caption" color={Colors.textFaint} style={styles.notifHint}>
                 Enable to receive reminders for upcoming tasks
               </AppText>
             </Animated.View>
           )}
-          <AppText variant="caption" color={Colors.textFaint} style={styles.notifHint}>
-            Reminders require a development build — silently skipped in Expo Go.
-          </AppText>
         </Card>
 
         {/* Data */}
@@ -432,10 +527,52 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.s2,
+    rowGap: Spacing.s2,
     paddingTop: Spacing.s2,
   },
   notifHint: {
     marginTop: 4,
+  },
+  capabilityBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    backgroundColor: Colors.warning + '24',
+    borderRadius: Radii.input,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginTop: 4,
+  },
+  bannerText: {
+    flex: 1,
+    lineHeight: 18,
+  },
+  bannerAction: {
+    fontFamily: 'Poppins_600SemiBold',
+    flexShrink: 0,
+  },
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 44,
+  },
+  navRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.s2,
+  },
+  navRowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  navIconTile: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dataRow: {
     minHeight: 44,

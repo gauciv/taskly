@@ -6,3 +6,4 @@ export const newTaskHref: Href = '/task/new' as Href;
 export const newTaskWithDueHref = (dueMs: number): Href =>
   ({ pathname: '/task/new', params: { due: String(dueMs) } }) as Href;
 export const notificationsHref: Href = '/notifications' as Href;
+export const achievementsHref: Href = '/achievements' as Href;
