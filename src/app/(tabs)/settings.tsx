@@ -261,6 +261,9 @@ export default function SettingsScreen() {
               Enable to receive reminders for upcoming tasks
             </AppText>
           )}
+          <AppText variant="caption" color={Colors.textFaint} style={styles.notifHint}>
+            Reminders require a development build — silently skipped in Expo Go.
+          </AppText>
         </Card>
 
         {/* Data */}
