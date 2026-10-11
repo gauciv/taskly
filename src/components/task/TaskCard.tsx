@@ -30,6 +30,9 @@ function TaskCardInner({ task, category, onPress, onToggle, index = 0 }: TaskCar
 
   const delay = Math.min(index, 6) * 40;
 
+  // The outer Animated.View owns enter/exit/layout animations ONLY — no transform.
+  // PressableScale owns the press-scale transform ONLY — no layout prop.
+  // Keeping them on separate nodes avoids the Reanimated "transform overwritten" conflict.
   return (
     <Animated.View
       entering={FadeInDown.delay(delay).duration(220)}
@@ -50,10 +53,7 @@ function TaskCardInner({ task, category, onPress, onToggle, index = 0 }: TaskCar
           <AppText
             variant="title"
             numberOfLines={2}
-            style={[
-              styles.title,
-              task.completed && styles.titleCompleted,
-            ]}
+            style={[styles.title, task.completed && styles.titleCompleted]}
             color={task.completed ? Colors.textMuted : Colors.text}
           >
             {task.title}
