@@ -1,7 +1,7 @@
 # Taskly: Build Progress
 Status: IN PROGRESS   <!-- set to COMPLETE only after P11.8 -->
-Current phase: P10
-Last updated: 2026-10-09
+Current phase: P11
+Last updated: 2026-10-11
 
 ## Checklist (tick [x] only when verified)
 - P0:  [x] 0.1 [x] 0.2 [x] 0.3 [x] 0.4 [x] 0.5 [x] 0.6
@@ -14,7 +14,7 @@ Last updated: 2026-10-09
 - P7:  [x] 7.1 [x] 7.2 [x] 7.3 [x] 7.4
 - P8:  [x] 8.1 [x] 8.2 [x] 8.3 [x] 8.4 [x] 8.5
 - P9:  [x] 9.1 [x] 9.2 [x] 9.3 [x] 9.4 [x] 9.5 [x] 9.6 [x] 9.7
-- P10: [ ] 10.1 [ ] 10.2 [ ] 10.3 [ ] 10.4 [ ] 10.5
+- P10: [x] 10.1 [x] 10.2 [x] 10.3 [x] 10.4 [x] 10.5
 - P11: [ ] 11.0 [ ] 11.1 [ ] 11.2 [ ] 11.3 [ ] 11.4 [ ] 11.5 [ ] 11.6 [ ] 11.7 [ ] 11.8
 
 ## Phase commits
