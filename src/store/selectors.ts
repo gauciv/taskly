@@ -1,5 +1,6 @@
 import { Task, Category } from '@/types';
 import { startOfDayMs, isToday, isOverdue } from '@/utils/date';
+import { startOfDay, addDays, format } from 'date-fns';
 
 function defaultSort(tasks: Task[]): Task[] {
   return [...tasks].sort((a, b) => {
@@ -65,4 +66,55 @@ export function selectOverdueCount(tasks: Task[]): number {
 
 export function selectDayHasTasks(tasks: Task[], day: Date): boolean {
   return selectTasksForDay(tasks, day).length > 0;
+}
+
+export interface WeeklyActivityDay {
+  dayMs: number;
+  label: string; // single char weekday initial e.g. 'M'
+  count: number;
+}
+
+export interface WeeklyActivity {
+  days: WeeklyActivityDay[];
+  total: number;
+  previousTotal: number;
+  todayDone: number;
+  todayTotal: number;
+}
+
+export function selectWeeklyActivity(tasks: Task[], now: number): WeeklyActivity {
+  const days: WeeklyActivityDay[] = [];
+  const todayStart = startOfDay(new Date(now)).getTime();
+
+  for (let i = 6; i >= 0; i--) {
+    const d = addDays(new Date(todayStart), -i);
+    const dayStart = d.getTime();
+    const dayEnd = dayStart + 86400000;
+    const count = tasks.filter(
+      (t) => t.completedAt !== null && t.completedAt >= dayStart && t.completedAt < dayEnd
+    ).length;
+    days.push({ dayMs: dayStart, label: format(d, 'EEEEE'), count });
+  }
+
+  const total = days.reduce((s, d) => s + d.count, 0);
+
+  // Previous 7 days
+  const prevStart = addDays(new Date(todayStart), -13).getTime();
+  const prevEnd = addDays(new Date(todayStart), -6).getTime();
+  const previousTotal = tasks.filter(
+    (t) => t.completedAt !== null && t.completedAt >= prevStart && t.completedAt < prevEnd
+  ).length;
+
+  // Today stats: tasks that were due today or completed today
+  const todayEnd = todayStart + 86400000;
+  const todayDone = tasks.filter(
+    (t) => t.completedAt !== null && t.completedAt >= todayStart && t.completedAt < todayEnd
+  ).length;
+  const todayTotal = tasks.filter(
+    (t) =>
+      (t.dueAt !== null && t.dueAt >= todayStart && t.dueAt < todayEnd) ||
+      (t.completedAt !== null && t.completedAt >= todayStart && t.completedAt < todayEnd)
+  ).length;
+
+  return { days, total, previousTotal, todayDone, todayTotal };
 }

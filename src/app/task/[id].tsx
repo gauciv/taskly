@@ -4,10 +4,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import Animated, {
   FadeInDown,
-  LinearTransition,
 } from 'react-native-reanimated';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Colors, Spacing, Radii, TabBar as TabBarTokens, tintedFill } from '@/theme/tokens';
+import { Colors, Spacing, Radii, tintedFill } from '@/theme/tokens';
 import { AppText } from '@/components/ui/AppText';
 import { IconButton } from '@/components/ui/IconButton';
 import { Button } from '@/components/ui/Button';

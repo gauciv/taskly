@@ -32,10 +32,10 @@ Last updated: 2026-10-11
 ## UI Update 2
 - [x] U2.1  ConfirmDialog + ConfirmHost, all destructive actions use it
 - [x] U2.2  Floating/header "+" removed; raised center "+" in tab bar (+ schedule-day prefill store)
-- [ ] U2.3  Route restructure: details at task/[id], edit at task/edit/[id], routes helper, all navigation updated
-- [ ] U2.4  Task Details screen
-- [ ] U2.5  Compact Recent Activity row
-- [ ] U2.6  Weekly Activity chart card (+ selectWeeklyActivity)
+- [x] U2.3  Route restructure: details at task/[id], edit at task/edit/[id], routes helper, all navigation updated
+- [x] U2.4  Task Details screen
+- [x] U2.5  Compact Recent Activity row
+- [x] U2.6  Weekly Activity chart card (+ selectWeeklyActivity)
 - [ ] U2.7  Pull-to-refresh (Home, Tasks, Schedule, Notifications) + usePullRefresh
 - [ ] U2.8  Notifications data layer: migration v2, repo, store, syncInbox, listeners, upcoming selector
 - [ ] U2.9  Notifications screen UI, bell badge, routing

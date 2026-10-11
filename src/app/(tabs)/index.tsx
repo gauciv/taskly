@@ -3,32 +3,32 @@ import {
   View,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing, Radii, TabBar as TabBarTokens } from '@/theme/tokens';
+import { Colors, Spacing, Radii, TabBar as TabBarTokens, tintedFill } from '@/theme/tokens';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { IconButton } from '@/components/ui/IconButton';
-import { NotchCard } from '@/components/ui/NotchCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { TaskCard } from '@/components/task/TaskCard';
+import { WeeklyActivityChart } from '@/components/ui/WeeklyActivityChart';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import {
   selectTodayAndOverdue,
   selectOpenCountByCategory,
   selectOverdueCount,
+  selectWeeklyActivity,
 } from '@/store/selectors';
-import { taskDetailsHref } from '@/utils/routes';
+import { taskDetailsHref, notificationsHref } from '@/utils/routes';
 import type { Category } from '@/types';
 
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
-
 
 function getInitials(name: string): string {
   return name
@@ -48,13 +48,11 @@ export default function HomeScreen() {
   const todayTasks = useMemo(() => selectTodayAndOverdue(tasks), [tasks]);
   const overdueCount = useMemo(() => selectOverdueCount(tasks), [tasks]);
   const catCounts = useMemo(() => selectOpenCountByCategory(tasks, categories), [tasks, categories]);
+  // eslint-disable-next-line react-hooks/purity
+  const weeklyActivity = useMemo(() => selectWeeklyActivity(tasks, Date.now()), [tasks]);
 
-  const todayTotal = todayTasks.length;
-  const todayDone = todayTasks.filter((t) => t.completed).length;
-  const showProgress = todayTotal > 0;
-  const progressPct = todayTotal > 0 ? todayDone / todayTotal : 0;
-
-  const topCats = catCounts.slice(0, 3);
+  const hasTasks = tasks.length > 0;
+  const topCats = catCounts.slice(0, 6);
   const todaySlice = todayTasks.slice(0, 5);
 
   function getCat(id: number | null): Category | undefined {
@@ -82,79 +80,47 @@ export default function HomeScreen() {
             icon="bell"
             accessibilityLabel="Notifications"
             badge={overdueCount > 0}
-            onPress={() => router.push({ pathname: '/(tabs)/tasks' })}
+            onPress={() => router.push(notificationsHref)}
           />
         </Animated.View>
 
-        {/* Progress card */}
-        {showProgress && (
-          <Animated.View
-            entering={FadeInDown.delay(60).duration(220)}
-            style={styles.progressCard}
-          >
-            <AppText variant="label" color={Colors.textMuted}>
-              {todayDone} of {todayTotal} done today
-            </AppText>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${Math.round(progressPct * 100)}%` as `${number}%` }]} />
-            </View>
-          </Animated.View>
+        {/* Weekly Activity chart (replaces progress bar) */}
+        {hasTasks && (
+          <WeeklyActivityChart data={weeklyActivity} hasTasks={hasTasks} />
         )}
 
-        {/* Recent Activity */}
+        {/* Recent Activity – compact horizontal row */}
         {topCats.length > 0 && (
           <Animated.View entering={FadeInDown.delay(120).duration(220)} style={styles.section}>
             <SectionHeader
               title="Recent Activity"
               onSeeMore={() => router.push('/(tabs)/tasks')}
             />
-            <View style={styles.notchGrid}>
-              {/* Tall left card */}
-              {topCats[0] && (
-                <TouchableOpacity
-                  style={styles.tallCard}
-                  onPress={() => router.push('/(tabs)/tasks')}
-                  accessibilityLabel={`${topCats[0].category.name} tasks`}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.activityRow}
+            >
+              {topCats.map((item, i) => (
+                <Animated.View
+                  key={item.category.id}
+                  entering={FadeInRight.delay(i < 4 ? i * 40 : 0).duration(220)}
                 >
-                  <NotchCard
-                    color={topCats[0].category.color}
-                    icon={topCats[0].category.icon as FeatherIconName}
-                    style={styles.tallCardInner}
+                  <Pressable
+                    onPress={() =>
+                      router.push({ pathname: '/(tabs)/tasks', params: { category: String(item.category.id) } })
+                    }
+                    accessibilityLabel={`${item.category.name}: ${item.count} open task${item.count !== 1 ? 's' : ''}`}
+                    style={({ pressed }) => [styles.compactCard, { opacity: pressed ? 0.8 : 1 }]}
                   >
-                    <AppText variant="label" color={Colors.onAccent} style={styles.catName}>
-                      {topCats[0].category.name}
-                    </AppText>
-                    <AppText variant="caption" color={Colors.onAccent + 'CC'}>
-                      {topCats[0].count} Task{topCats[0].count !== 1 ? 's' : ''}
-                    </AppText>
-                  </NotchCard>
-                </TouchableOpacity>
-              )}
-              {/* Two stacked right cards */}
-              <View style={styles.stackedCards}>
-                {topCats.slice(1, 3).map((item) => (
-                  <TouchableOpacity
-                    key={item.category.id}
-                    style={styles.smallCard}
-                    onPress={() => router.push('/(tabs)/tasks')}
-                    accessibilityLabel={`${item.category.name} tasks`}
-                  >
-                    <NotchCard
-                      color={item.category.color}
-                      icon={item.category.icon as FeatherIconName}
-                      style={styles.smallCardInner}
-                    >
-                      <AppText variant="caption" color={Colors.onAccent} style={styles.catName}>
-                        {item.category.name}
-                      </AppText>
-                      <AppText variant="caption" color={Colors.onAccent + 'CC'}>
-                        {item.count} Task{item.count !== 1 ? 's' : ''}
-                      </AppText>
-                    </NotchCard>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+                    <CompactCatCard
+                      category={item.category}
+                      count={item.count}
+                    />
+                  </Pressable>
+                </Animated.View>
+              ))}
+            </ScrollView>
           </Animated.View>
         )}
 
@@ -193,6 +159,31 @@ export default function HomeScreen() {
   );
 }
 
+function CompactCatCard({ category, count }: { category: Category; count: number }) {
+  const catColor = category.color;
+  return (
+    <View style={[styles.notchCompact, { backgroundColor: tintedFill(catColor), borderColor: catColor + '44' }]}>
+      {/* notch top-right */}
+      <View style={[styles.notchCorner, { borderBottomColor: tintedFill(catColor) }]} />
+      <View style={[styles.notchCornerBg, { borderBottomColor: Colors.bg }]} />
+
+      <View style={[styles.iconTile, { backgroundColor: catColor + '33' }]}>
+        <Feather name={category.icon as FeatherIconName} size={16} color={catColor} />
+      </View>
+      <View style={styles.notchBottom}>
+        <AppText variant="label" color={Colors.text} style={styles.catNameText} numberOfLines={1}>
+          {category.name}
+        </AppText>
+        <AppText variant="caption" color={Colors.textMuted}>
+          {count} open task{count !== 1 ? 's' : ''}
+        </AppText>
+      </View>
+    </View>
+  );
+}
+
+const NOTCH_SIZE = 22;
+
 const styles = StyleSheet.create({
   scroll: {
     paddingTop: 0,
@@ -215,56 +206,69 @@ const styles = StyleSheet.create({
   greeting: {
     flex: 1,
   },
-  progressCard: {
-    marginHorizontal: Spacing.screenH,
-    marginBottom: Spacing.sectionGap,
-    backgroundColor: Colors.surfaceAlt,
-    borderRadius: Radii.card,
-    padding: Spacing.s4,
-    gap: Spacing.s2,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  progressTrack: {
-    height: 4,
-    backgroundColor: Colors.surfaceHigh,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: Colors.lime,
-    borderRadius: 2,
-  },
   section: {
     marginBottom: Spacing.sectionGap,
   },
-  notchGrid: {
-    flexDirection: 'row',
+  activityRow: {
     paddingHorizontal: Spacing.screenH,
-    gap: Spacing.s3,
+    gap: 12,
+    flexDirection: 'row',
   },
-  tallCard: {
-    flex: 1,
+  compactCard: {
+    // wrapper for pressable feedback
   },
-  tallCardInner: {
-    minHeight: 160,
+  notchCompact: {
+    width: 152,
+    height: 104,
+    borderRadius: Radii.taskCard,
+    borderWidth: 1,
+    padding: 14,
+    overflow: 'hidden',
+    justifyContent: 'space-between',
   },
-  stackedCards: {
-    flex: 1,
-    gap: Spacing.s3,
+  notchCorner: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 0,
+    height: 0,
+    borderStyle: 'solid',
+    borderTopWidth: 0,
+    borderRightWidth: 0,
+    borderBottomWidth: NOTCH_SIZE,
+    borderLeftWidth: NOTCH_SIZE,
+    borderBottomColor: 'transparent',
+    borderLeftColor: 'transparent',
   },
-  smallCard: {
-    flex: 1,
+  notchCornerBg: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 0,
+    height: 0,
+    borderStyle: 'solid',
+    borderTopWidth: NOTCH_SIZE,
+    borderRightWidth: NOTCH_SIZE,
+    borderBottomWidth: 0,
+    borderLeftWidth: 0,
+    borderTopColor: Colors.bg,
+    borderRightColor: Colors.bg,
   },
-  smallCardInner: {
-    minHeight: 72,
+  iconTile: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notchBottom: {
+    gap: 2,
+  },
+  catNameText: {
+    flexShrink: 1,
   },
   taskList: {
     gap: Spacing.s2,
   },
   taskWrap: {},
-  catName: {
-    flexShrink: 1,
-  },
 });

@@ -1,3 +1,4 @@
+b29ccbf U2.3: Route restructure - fix TSC errors, details at task/[id], edit at task/edit/[id], routes helper, nav updated
 e4c3836 U2.2: Floating/header + removed; raised center + in tab bar
 f287273 U2.1: ConfirmDialog + ConfirmHost, all destructive actions use it
 11ad053 fix(tasks): clean filter layout and single add button
@@ -7,4 +8,3 @@ b802535 fix: lazy-load expo-notifications to survive Expo Go SDK 53+ import cras
 4641c83 P11: final polish - animated toggle, complete README, P11 audit complete
 fe20658 P10: Settings - animated toggle, profile edit, notifications, data management
 46af855 P9: Notifications
-dbb9e43 P8: Search and filters
