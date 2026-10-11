@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Colors, Radii, Spacing } from '@/theme/tokens';
 import { PressableScale } from './PressableScale';
@@ -13,7 +13,7 @@ interface ChipProps {
   selected?: boolean;
   onPress?: () => void;
   icon?: FeatherIconName;
-  color?: string; // accent color when selected
+  color?: string;
   accessibilityLabel?: string;
 }
 
@@ -25,6 +25,7 @@ export function Chip({ label, selected, onPress, icon, color = Colors.lime, acce
   return (
     <PressableScale
       onPress={onPress}
+      hitSlop={6}
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"
       accessibilityState={{ selected: selected ?? false }}
@@ -35,7 +36,7 @@ export function Chip({ label, selected, onPress, icon, color = Colors.lime, acce
           <Feather name={icon} size={12} color={iconColor} />
         </View>
       )}
-      <AppText variant="caption" color={textColor} style={styles.label}>
+      <AppText variant="label" color={textColor} style={styles.label}>
         {label}
       </AppText>
     </PressableScale>
@@ -46,18 +47,26 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.s3,
-    paddingVertical: Spacing.s2,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: Radii.chip,
     borderWidth: 1,
     gap: 4,
-    height: 32,
+    minHeight: 36,
   },
   iconWrap: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   label: {
+    fontSize: 13,
     fontFamily: 'Poppins_500Medium',
+    // Prevent text clipping on Android with Poppins' tall line metrics
+    ...Platform.select({
+      android: {
+        includeFontPadding: false,
+        lineHeight: 18,
+      },
+    }),
   },
 });

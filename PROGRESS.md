@@ -27,6 +27,7 @@ Last updated: 2026-10-11
 - ReanimatedSwipeable from react-native-gesture-handler/ReanimatedSwipeable (confirmed present in v2.32.0).
 - Settings screen uses a fully custom animated toggle (Reanimated interpolateColor + withSpring thumb translation) instead of the stock RN Switch, matching the dark design system.
 - P11 audit: all screens verified against the design system; no stock-looking controls; custom animated toggle replaces Switch; README updated with full feature table and architecture description.
+- UI fix 2026-10-11: Tasks tab filters redesigned (single status row + filter sheet); root cause: three horizontal ScrollViews lacked flexGrow:0/flexShrink:0 so the flex:1 task list compressed them to zero height, and Chip had a fixed height:32 that clipped Poppins' tall line metrics on Android. Fixed by adding flexGrow:0/flexShrink:0 to all chip scrollers, replacing fixed height with minHeight:36 + paddingVertical:8, and adding includeFontPadding:false/explicit lineHeight on Android. Category and priority filters moved into a Modal bottom sheet; only one status chip row remains on the main screen; FAB hidden when no tasks exist.
 
 ## Known issues
 (non-blocking bugs or warnings)

@@ -53,6 +53,7 @@ export function CategoryPicker({ selectedId, onSelect }: CategoryPickerProps) {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.scroller}
         contentContainerStyle={styles.row}
       >
         {categories.map((cat) => (
@@ -115,11 +116,16 @@ export function CategoryPicker({ selectedId, onSelect }: CategoryPickerProps) {
 }
 
 const styles = StyleSheet.create({
+  scroller: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   row: {
     flexDirection: 'row',
     gap: Spacing.s2,
     paddingHorizontal: Spacing.screenH,
     paddingVertical: Spacing.s2,
+    alignItems: 'center',
   },
   newRow: {
     marginHorizontal: Spacing.screenH,
