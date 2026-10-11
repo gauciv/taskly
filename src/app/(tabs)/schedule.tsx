@@ -4,29 +4,29 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  FlatList,
 } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { format, addWeeks, subWeeks, isSameDay, isToday as dfnsIsToday } from 'date-fns';
-import { Colors, Spacing, Radii, tintedFill } from '@/theme/tokens';
+import { Colors, Spacing, Radii, TabBar as TabBarTokens, tintedFill } from '@/theme/tokens';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
-import { IconButton } from '@/components/ui/IconButton';
 import { TaskCard } from '@/components/task/TaskCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useTaskStore } from '@/store/useTaskStore';
+import { useScheduleStore } from '@/store/useScheduleStore';
 import { selectTasksForDay, selectDayHasTasks } from '@/store/selectors';
 import { weekDays, formatTime } from '@/utils/date';
-import type { Task, Category } from '@/types';
-
-const TIME_LABELS = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+import type { Category } from '@/types';
 
 export default function ScheduleScreen() {
+  const insets = useSafeAreaInsets();
   const tasks = useTaskStore((s) => s.tasks);
   const categories = useTaskStore((s) => s.categories);
   const toggleComplete = useTaskStore((s) => s.toggleComplete);
+  const setScheduleDay = useScheduleStore((s) => s.setSelectedDay);
 
   const [anchor, setAnchor] = useState(() => Date.now());
   const [selectedDay, setSelectedDay] = useState(() => new Date());
@@ -50,11 +50,13 @@ export default function ScheduleScreen() {
     const now = Date.now();
     setAnchor(now);
     setSelectedDay(new Date(now));
+    setScheduleDay(now);
   }
 
   const handleDayPress = useCallback((day: Date) => {
     setSelectedDay(day);
-  }, []);
+    setScheduleDay(day.getTime());
+  }, [setScheduleDay]);
 
   const openNew = useCallback(() => {
     const d = new Date(selectedDay);
@@ -67,12 +69,9 @@ export default function ScheduleScreen() {
       {/* Header */}
       <View style={styles.header}>
         <AppText variant="h2" color={Colors.text}>Task Schedule</AppText>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.todayPill} onPress={goToday}>
-            <AppText variant="caption" color={Colors.lime}>Today</AppText>
-          </TouchableOpacity>
-          <IconButton icon="plus" onPress={openNew} accessibilityLabel="Add task" color={Colors.onAccent} bgColor={Colors.lime} />
-        </View>
+        <TouchableOpacity style={styles.todayPill} onPress={goToday}>
+          <AppText variant="caption" color={Colors.lime}>Today</AppText>
+        </TouchableOpacity>
       </View>
 
       {/* Month + nav */}
@@ -138,7 +137,7 @@ export default function ScheduleScreen() {
         exiting={FadeOut.duration(180)}
         style={styles.timeline}
       >
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.timelineContent}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.timelineContent, { paddingBottom: TabBarTokens.height + insets.bottom + 40 }]}>
           {dayTasks.length === 0 ? (
             <EmptyState
               icon="calendar"
@@ -210,11 +209,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.screenH,
     paddingVertical: Spacing.s4,
   },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.s2,
-  },
   todayPill: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -266,7 +260,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   timelineContent: {
-    paddingBottom: 100,
+    paddingTop: 0,
   },
   allDaySection: {
     marginBottom: Spacing.s4,

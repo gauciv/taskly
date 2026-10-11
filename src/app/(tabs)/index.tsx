@@ -8,7 +8,8 @@ import {
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { Colors, Spacing, Radii, tintedFill } from '@/theme/tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors, Spacing, Radii, TabBar as TabBarTokens } from '@/theme/tokens';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { IconButton } from '@/components/ui/IconButton';
@@ -27,6 +28,7 @@ import type { Category } from '@/types';
 
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
 
+
 function getInitials(name: string): string {
   return name
     .split(' ')
@@ -36,6 +38,7 @@ function getInitials(name: string): string {
 }
 
 export default function HomeScreen() {
+  const insets = useSafeAreaInsets();
   const tasks = useTaskStore((s) => s.tasks);
   const categories = useTaskStore((s) => s.categories);
   const toggleComplete = useTaskStore((s) => s.toggleComplete);
@@ -61,7 +64,7 @@ export default function HomeScreen() {
     <Screen edges={['top', 'left', 'right']}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: TabBarTokens.height + insets.bottom + 40 }]}
       >
         {/* Header */}
         <Animated.View entering={FadeInDown.duration(220)} style={styles.header}>
@@ -185,23 +188,13 @@ export default function HomeScreen() {
           )}
         </Animated.View>
       </ScrollView>
-
-      {/* Floating + */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => router.push('/task/new')}
-        accessibilityLabel="Add new task"
-        accessibilityRole="button"
-      >
-        <Feather name="plus" size={24} color={Colors.onAccent} />
-      </TouchableOpacity>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   scroll: {
-    paddingBottom: 100,
+    paddingTop: 0,
   },
   header: {
     flexDirection: 'row',
@@ -270,20 +263,4 @@ const styles = StyleSheet.create({
     gap: Spacing.s2,
   },
   taskWrap: {},
-  fab: {
-    position: 'absolute',
-    right: Spacing.screenH,
-    bottom: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.lime,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.lime,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
-  },
 });

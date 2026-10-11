@@ -30,8 +30,8 @@ Last updated: 2026-10-11
 - UI fix 2026-10-11: Tasks tab filters redesigned (single status row + filter sheet); root cause: three horizontal ScrollViews lacked flexGrow:0/flexShrink:0 so the flex:1 task list compressed them to zero height, and Chip had a fixed height:32 that clipped Poppins' tall line metrics on Android. Fixed by adding flexGrow:0/flexShrink:0 to all chip scrollers, replacing fixed height with minHeight:36 + paddingVertical:8, and adding includeFontPadding:false/explicit lineHeight on Android. Category and priority filters moved into a Modal bottom sheet; only one status chip row remains on the main screen; FAB hidden when no tasks exist.
 
 ## UI Update 2
-- [ ] U2.1  ConfirmDialog + ConfirmHost, all destructive actions use it
-- [ ] U2.2  Floating/header "+" removed; raised center "+" in tab bar (+ schedule-day prefill store)
+- [x] U2.1  ConfirmDialog + ConfirmHost, all destructive actions use it
+- [x] U2.2  Floating/header "+" removed; raised center "+" in tab bar (+ schedule-day prefill store)
 - [ ] U2.3  Route restructure: details at task/[id], edit at task/edit/[id], routes helper, all navigation updated
 - [ ] U2.4  Task Details screen
 - [ ] U2.5  Compact Recent Activity row

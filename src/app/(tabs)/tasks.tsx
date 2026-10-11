@@ -344,17 +344,7 @@ export default function TasksScreen() {
         </Animated.ScrollView>
       )}
 
-      {/* FAB — hidden when zero tasks (empty state has its own button) */}
-      {hasTasks && (
-        <TouchableOpacity
-          style={[styles.fab, { bottom: insets.bottom + TabBarTokens.height - 48 + 16 }]}
-          onPress={() => router.push('/task/new')}
-          accessibilityLabel="Add task"
-          accessibilityRole="button"
-        >
-          <Feather name="plus" size={24} color={Colors.onAccent} />
-        </TouchableOpacity>
-      )}
+      {/* FAB removed — center tab bar button handles new tasks */}
 
       {/* Filter sheet */}
       <FilterSheet
@@ -495,20 +485,5 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  fab: {
-    position: 'absolute',
-    right: Spacing.screenH,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.lime,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.lime,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
   },
 });
