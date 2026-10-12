@@ -119,17 +119,29 @@ jobs:
         run: bash scripts/ci/preflight.sh
       - uses: gradle/actions/setup-gradle@v4
       - name: Build release APK with diagnostics
+        id: gradle_build
         run: bash scripts/ci/gradle-build.sh
       - name: Rename and checksum the APK
+        id: package_apk
         env:
           VERSION: ${{ needs.gate.outputs.version }}
         run: |
-          set -euo pipefail
-          APK=$(find android/app/build/outputs -type f -name '*.apk' | head -n 1)
-          test -n "$APK"
+          set -Eeuo pipefail
+          trap 'rc=$?; trap - ERR; printf "APK packaging failed (exit %s) near line %s.\n" "$rc" "$LINENO" | tee -a diagnostics/package-apk.log >> diagnostics/REPORT.md; exit "$rc"' ERR
+          mapfile -d '' -t APKS < <(find android/app/build/outputs -type f -name '*.apk' -print0 | sort -z)
+          printf 'Found %s APK file(s):\n' "${#APKS[@]}" | tee diagnostics/package-apk.log
+          printf '%s\n' "${APKS[@]}" | tee -a diagnostics/package-apk.log
+          if ((${#APKS[@]} == 0)); then
+            echo 'No APK found under android/app/build/outputs.' | tee -a diagnostics/package-apk.log
+            exit 1
+          fi
+          APK="${APKS[0]}"
           cp "$APK" "Taskly-v${VERSION}.apk"
           sha256sum "Taskly-v${VERSION}.apk" > "Taskly-v${VERSION}.apk.sha256"
+          printf '\n## Packaged APK\n\n- Source: `%s`\n- Output: `Taskly-v%s.apk` (%s bytes)\n- SHA-256: `%s`\n' \
+            "$APK" "$VERSION" "$(stat -c '%s' "Taskly-v${VERSION}.apk")" "$(cut -d ' ' -f 1 "Taskly-v${VERSION}.apk.sha256")" >> diagnostics/REPORT.md
       - name: Generate conventional commit changelog
+        id: changelog
         if: success()
         env:
           PREVIOUS_TAG: ${{ needs.gate.outputs.previous }}
@@ -171,15 +183,8 @@ jobs:
             printf '1. Download the `.apk` below on your phone.\n2. Open it and allow "Install unknown apps" for your browser or files app if asked.\n3. Open **Taskly**.\n\n'
             printf 'Built for 64-bit Android phones (arm64) and x86_64 emulators. Signed with the standard Android debug key for sideloading; this key is not for Play Store publishing.\n'
           } > CHANGELOG_BODY.md
-      - name: Upload build diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: diagnostics
-          path: diagnostics/
-          if-no-files-found: warn
-          retention-days: 14
       - name: Upload APK artifact
+        id: upload_apk
         if: success()
         uses: actions/upload-artifact@v4
         with:
@@ -188,6 +193,7 @@ jobs:
             Taskly-v*.apk
             Taskly-v*.apk.sha256
       - name: Publish GitHub Release
+        id: publish_release
         if: github.event_name == 'push' && github.ref_type == 'tag' && success()
         uses: softprops/action-gh-release@v2
         with:
@@ -196,3 +202,29 @@ jobs:
             Taskly-v*.apk.sha256
           body_path: CHANGELOG_BODY.md
           generate_release_notes: false
+      - name: Record post-build workflow outcomes
+        if: always()
+        env:
+          GRADLE_RESULT: ${{ steps.gradle_build.outcome }}
+          APK_RESULT: ${{ steps.package_apk.outcome }}
+          CHANGELOG_RESULT: ${{ steps.changelog.outcome }}
+          UPLOAD_RESULT: ${{ steps.upload_apk.outcome }}
+          RELEASE_RESULT: ${{ steps.publish_release.outcome }}
+        run: |
+          {
+            printf '\n## Post-build workflow outcomes\n\n'
+            printf -- '- Gradle build: **%s**\n' "$GRADLE_RESULT"
+            printf -- '- APK packaging: **%s**\n' "$APK_RESULT"
+            printf -- '- Changelog generation: **%s**\n' "$CHANGELOG_RESULT"
+            printf -- '- APK artifact upload: **%s**\n' "$UPLOAD_RESULT"
+            printf -- '- GitHub Release publish: **%s** (skipped is expected for manual runs)\n' "$RELEASE_RESULT"
+          } | tee diagnostics/workflow-outcomes.md >> diagnostics/REPORT.md
+          cat diagnostics/workflow-outcomes.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostics
+          path: diagnostics/
+          if-no-files-found: warn
+          retention-days: 14
