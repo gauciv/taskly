@@ -18,6 +18,9 @@ interface IconButtonProps {
   badge?: boolean;
   /** numeric badge — shows a red circle with a count; caps display at "9+" */
   badgeCount?: number;
+  buttonSize?: number;
+  borderColor?: string;
+  borderWidth?: number;
 }
 
 export function IconButton({
@@ -29,6 +32,9 @@ export function IconButton({
   bgColor = Colors.surfaceAlt,
   badge,
   badgeCount,
+  buttonSize = TouchTarget,
+  borderColor,
+  borderWidth = 0,
 }: IconButtonProps) {
   const showDot = badge && !badgeCount;
   const showNum = typeof badgeCount === 'number' && badgeCount > 0;
@@ -39,7 +45,7 @@ export function IconButton({
       onPress={onPress}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
-      style={[styles.button, { backgroundColor: bgColor, width: TouchTarget, height: TouchTarget }]}
+      style={[styles.button, { backgroundColor: bgColor, width: buttonSize, height: buttonSize, borderColor, borderWidth }]}
     >
       <Feather name={icon} size={size} color={color} />
       {showDot && <View style={styles.dot} />}
