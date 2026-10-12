@@ -147,7 +147,9 @@ jobs:
           PREVIOUS_TAG: ${{ needs.gate.outputs.previous }}
           VERSION: ${{ needs.gate.outputs.version }}
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
+          exec > >(tee diagnostics/changelog.log) 2>&1
+          trap 'rc=$?; trap - ERR; printf "Changelog generation failed (exit %s) near line %s. See diagnostics/changelog.log.\n" "$rc" "$LINENO" >> diagnostics/REPORT.md; exit "$rc"' ERR
           if [[ -n "$PREVIOUS_TAG" ]]; then
             range="${PREVIOUS_TAG}..HEAD"
           else
@@ -170,7 +172,8 @@ jobs:
               esac
               printf '### %s\n' "$title"
               while IFS= read -r subject; do
-                if [[ "$subject" =~ ^${kind}(\([^)]*\))?:[[:space:]]+(.+)$ ]]; then
+                pattern="^${kind}(\\([^)]*\\))?:[[:space:]]+(.+)$"
+                if [[ "$subject" =~ $pattern ]]; then
                   printf -- '- %s\n' "${BASH_REMATCH[2]}"
                 fi
               done < /tmp/taskly-commit-subjects.txt
