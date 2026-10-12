@@ -34,12 +34,10 @@ const RIGHT_TABS: TabItem[] = [
 
 interface TabBarProps {
   state: { index: number; routes: { name: string; key: string }[] };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  navigation: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  descriptors?: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  insets?: any;
+  navigation: {
+    emit: (event: { type: 'tabPress'; target?: string; canPreventDefault: true }) => { defaultPrevented: boolean };
+    navigate: (name: string) => void;
+  };
 }
 
 function TabButton({
@@ -111,6 +109,7 @@ function CenterAddButton({ isScheduleActive }: { isScheduleActive: boolean }) {
     } else {
       router.push(newTaskHref);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDayMs, isScheduleActive]);
 
   const outerStyle = useAnimatedStyle(() => ({

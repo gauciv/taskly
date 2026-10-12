@@ -36,4 +36,5 @@ export interface TaskInput {
   dueHasTime?: boolean;
 }
 
-export interface TaskSnapshot extends Task {}
+// TaskSnapshot is a full Task copy used for undo/restore operations
+export type TaskSnapshot = Task;

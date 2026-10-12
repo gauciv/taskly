@@ -10,6 +10,7 @@ import { Platform } from 'react-native';
 import { Task } from '@/types';
 import { getSetting, setSetting } from '@/db/settingsRepo';
 import { formatDueLabel } from '@/utils/date';
+import { logError } from '@/utils/logger';
 
 // ── Lazy loader ───────────────────────────────────────────────────────────────
 // Returns the expo-notifications module or null if unavailable (Expo Go SDK 53+).
@@ -19,10 +20,12 @@ let _notif: ExpoNotifications | null | 'unloaded' = 'unloaded';
 function getNotif(): ExpoNotifications | null {
   if (_notif !== 'unloaded') return _notif;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // Dynamic require for lazy loading — module may throw at import in Expo Go
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require('expo-notifications') as ExpoNotifications;
     _notif = mod;
   } catch {
+    logError('notifications.loadModule', 'expo-notifications unavailable');
     _notif = null;
   }
   return _notif;
@@ -41,7 +44,9 @@ try {
       }),
     });
   }
-} catch {}
+} catch (error) {
+  logError('notifications.setHandler', error);
+}
 
 // ── Android channel ───────────────────────────────────────────────────────────
 async function ensureChannel(): Promise<void> {
@@ -55,7 +60,9 @@ async function ensureChannel(): Promise<void> {
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#D9FF3F',
     });
-  } catch {}
+  } catch (error) {
+    logError('notifications.ensureChannel', error);
+  }
 }
 
 // ── Permission ────────────────────────────────────────────────────────────────
@@ -90,7 +97,10 @@ export async function ensurePermission(): Promise<boolean> {
       useNotificationStatus.getState().setStatus(null);
     }
     return status === 'granted';
-  } catch {
+  } catch (error) {
+    logError('notifications.ensurePermission', error);
+    const { useNotificationStatus } = await import('@/store/useNotificationStatus');
+    useNotificationStatus.getState().setStatus('unsupported');
     return false;
   }
 }
@@ -129,7 +139,9 @@ export async function syncTaskNotification(task: Task): Promise<void> {
     if (!granted) return;
     await ensureChannel();
     if (task.notificationId) {
-      await n.cancelScheduledNotificationAsync(task.notificationId).catch(() => {});
+      await n.cancelScheduledNotificationAsync(task.notificationId).catch((error) => {
+        logError('notifications.replaceSchedule.cancel', error);
+      });
     }
     const fireDate = await getFireTime(task);
     if (!fireDate) return;
@@ -149,7 +161,8 @@ export async function syncTaskNotification(task: Task): Promise<void> {
     });
     const { updateTask } = await import('@/db/tasksRepo');
     await updateTask(task.id, { notificationId: `task-${task.id}` });
-  } catch {
+  } catch (error) {
+    logError('notifications.syncTask', error);
     const { useNotificationStatus } = await import('@/store/useNotificationStatus');
     useNotificationStatus.getState().setStatus('unsupported');
   }
@@ -162,8 +175,12 @@ export async function cancelTaskNotification(
     const n = getNotif();
     if (!n) return;
     const id = task.notificationId ?? `task-${task.id}`;
-    await n.cancelScheduledNotificationAsync(id).catch(() => {});
-  } catch {}
+    await n.cancelScheduledNotificationAsync(id).catch((error) => {
+      logError('notifications.cancelTask', error);
+    });
+  } catch (error) {
+    logError('notifications.cancelTask', error);
+  }
 }
 
 export async function resyncAll(tasks: Task[]): Promise<void> {
@@ -178,7 +195,9 @@ export async function resyncAll(tasks: Task[]): Promise<void> {
         await syncTaskNotification(task);
       }
     }
-  } catch {}
+  } catch (error) {
+    logError('notifications.resyncAll', error);
+  }
 }
 
 // ── Deep-link on notification tap ─────────────────────────────────────────────
@@ -209,5 +228,7 @@ export async function checkLastNotificationResponse(
       const data = response.notification.request.content.data as Record<string, unknown>;
       if (typeof data?.taskId === 'number') onTap(data.taskId);
     }
-  } catch {}
+  } catch (error) {
+    logError('notifications.checkLastResponse', error);
+  }
 }

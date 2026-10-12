@@ -58,9 +58,7 @@ export function ConfirmHost() {
 
   useEffect(() => {
     if (options) {
-      // eslint-disable-next-line react-hooks/immutability
       scale.value = withSpring(1, SpringConfig);
-      // eslint-disable-next-line react-hooks/immutability
       opacity.value = withTiming(1, { duration: 180 });
       haptic.warning();
     }

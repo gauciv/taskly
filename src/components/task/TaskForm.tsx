@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -15,6 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import { haptic } from '@/utils/feedback';
+import { logError } from '@/utils/logger';
 import { router } from 'expo-router';
 import { Task, TaskInput, Priority } from '@/types';
 import { Colors, Spacing, Radii } from '@/theme/tokens';
@@ -54,23 +55,17 @@ export function TaskForm({ task, prefillCategoryId, prefillDue }: TaskFormProps)
   const [dueHasTime, setDueHasTime] = useState(task?.dueHasTime ?? false);
   const [titleError, setTitleError] = useState('');
   const [saveStatus, setSaveStatus] = useState<ButtonStatus>('idle');
-  const [pastDueWarned, setPastDueWarned] = useState(false);
+  // isPastDue stored as state, updated in handleDueChange (not at render time)
+  const [isPastDue, setIsPastDue] = useState(false);
+  // Track whether we've warned about past-due so haptic fires only once per change
+  const pastDueWarnedRef = useRef(false);
   const titleRef = useRef<TextInput>(null);
 
   const titleShakeX = useSharedValue(0);
   const saveShakeX = useSharedValue(0);
 
   // Past-due warning: warn once when dueAt + hasTime is in the past
-  const isPastDue = dueAt !== null && dueHasTime && dueAt < Date.now();
-
-  useEffect(() => {
-    if (isPastDue && !pastDueWarned) {
-      haptic.warning();
-      setPastDueWarned(true);
-    }
-    if (!isPastDue) setPastDueWarned(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPastDue]);
+  // Computed lazily in handleDueChange to avoid impure render calls
 
   function shakeField(shakeVal: SharedValue<number>) {
     shakeVal.value = withSequence(
@@ -85,7 +80,15 @@ export function TaskForm({ task, prefillCategoryId, prefillDue }: TaskFormProps)
   function handleDueChange(at: number | null, hasTime: boolean) {
     setDueAt(at);
     setDueHasTime(hasTime);
-    setPastDueWarned(false);
+    // Fire past-due warning haptic once per new selection that is already past
+    const nowMs = Date.now();
+    const nowPastDue = at !== null && hasTime && at < nowMs;
+    const wasPastDue = dueAt !== null && dueHasTime && dueAt < nowMs;
+    if (nowPastDue && !wasPastDue) {
+      haptic.warning();
+    }
+    setIsPastDue(nowPastDue);
+    pastDueWarnedRef.current = nowPastDue;
   }
 
   const titleShakeStyle = useAnimatedStyle(() => ({
@@ -143,7 +146,8 @@ export function TaskForm({ task, prefillCategoryId, prefillDue }: TaskFormProps)
         shakeField(saveShakeX);
         setTimeout(() => setSaveStatus('idle'), 1500);
       }
-    } catch {
+    } catch (error) {
+      logError('TaskForm.save', error);
       setSaveStatus('error');
       haptic.error();
       shakeField(saveShakeX);

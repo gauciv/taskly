@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -37,7 +37,6 @@ function seeded(seed: number): number {
 
 function makeParticles(count: number, originX: number, originY: number): Particle[] {
   return Array.from({ length: count }, (_, i) => {
-    const r = seeded(i * 7);
     const angle = (seeded(i * 13) * 360 - 30) * (Math.PI / 180); // mostly upward
     const speed = 200 + seeded(i * 19) * 300;
     return {
@@ -98,7 +97,12 @@ export function Confetti({
   onFinish,
 }: ConfettiProps) {
   const t = useSharedValue(0);
-  const particles = useRef(makeParticles(count, originX, originY)).current;
+  // useMemo keeps particles stable across re-renders without touching refs during render
+  const particles = useMemo(
+    () => makeParticles(count, originX, originY),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [] // intentionally computed once at mount
+  );
   const finished = useRef(false);
 
   function handleFinish() {

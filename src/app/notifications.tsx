@@ -15,7 +15,6 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { router } from 'expo-router';
@@ -172,6 +171,7 @@ interface UpcomingRowProps {
 }
 
 function UpcomingRow({ taskTitle, fireTime, dueAt, onPress }: UpcomingRowProps) {
+  // eslint-disable-next-line react-hooks/purity
   const diff = fireTime - Date.now();
   let countdown = '';
   if (diff < 3600_000) countdown = `in ${Math.max(1, Math.ceil(diff / 60_000))}m`;
@@ -410,6 +410,7 @@ export default function NotificationsScreen() {
 
   // Upcoming reminders (computed, not stored)
   const upcoming = useMemo(
+    // eslint-disable-next-line react-hooks/purity
     () => selectUpcomingReminders(tasks, { notificationsEnabled, reminderOffsetMin }, Date.now()),
     [tasks, notificationsEnabled, reminderOffsetMin]
   );
@@ -428,16 +429,21 @@ export default function NotificationsScreen() {
     return m;
   }, [tasks]);
 
-  async function handleItemPress(item: NotificationRow) {
+  async function handleMarkAllRead() {
+    haptic.success();
+    await markAllRead();
+  }
+
+  const handleItemPress = useCallback(async (item: NotificationRow) => {
     if (!item.read) await markRead(item.id);
     if (item.taskId === null) {
       showToast('This task was deleted');
       return;
     }
     router.push(taskDetailsHref(item.taskId));
-  }
+  }, [markRead]);
 
-  async function handleDismiss(item: NotificationRow) {
+  const handleDismiss = useCallback(async (item: NotificationRow) => {
     const snapshot = await remove(item.id);
     if (snapshot) {
       showToast('Notification dismissed', {
@@ -445,12 +451,7 @@ export default function NotificationsScreen() {
         onPress: () => restore(snapshot),
       });
     }
-  }
-
-  async function handleMarkAllRead() {
-    haptic.success();
-    await markAllRead();
-  }
+  }, [remove, restore]);
 
   async function handleClearAll() {
     const ok = await confirm({

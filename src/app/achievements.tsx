@@ -99,11 +99,13 @@ export default function AchievementsScreen() {
   const achievementsUnlocked = useSettingsStore((s) => s.achievementsUnlocked);
   const tasks = useTaskStore((s) => s.tasks);
 
+  // eslint-disable-next-line react-hooks/purity
   const streak = useMemo(() => selectStreak(tasks, Date.now()), [tasks]);
 
   const badgeData = useMemo(() =>
     ACHIEVEMENTS.map((def) => {
       const unlockedAt = achievements[def.id];
+      // eslint-disable-next-line react-hooks/purity
       const { progress, max } = def.evaluate(tasks, Date.now());
       return { def, unlockedAt, progress, max };
     }),

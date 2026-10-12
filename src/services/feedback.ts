@@ -52,7 +52,9 @@ async function setLastAllDoneDay(key: string): Promise<void> {
   try {
     const { setSetting } = await import('@/db/settingsRepo');
     await setSetting('last_all_done_day', key);
-  } catch {}
+  } catch (error) {
+    logError('feedback.persistAllDoneDay', error);
+  }
 }
 
 // Track streak milestones celebrated to avoid repeating
@@ -63,6 +65,7 @@ export async function onTaskCompleted(
   allTasks: Task[],
   originX?: number,
   originY?: number,
+  onUndo?: () => void,
 ): Promise<void> {
   try {
     const { useSettingsStore } = await import('@/store/useSettingsStore');
@@ -162,6 +165,7 @@ export async function onTaskCompleted(
     }
 
     // Contextual success toast with Undo
+    const undoAction = onUndo ? { label: 'Undo', onPress: onUndo } : undefined;
     let message: string;
     if (task.dueAt !== null && isOverdue({ ...task, completed: false })) {
       message = 'Back on track!';
@@ -173,13 +177,22 @@ export async function onTaskCompleted(
       message = nextContextual();
     }
 
-    showToast(message, { type: 'success' });
+    showToast(message, {
+      type: 'success',
+      action: undoAction,
+    });
   } catch (err) {
     logError('onTaskCompleted', err);
   }
 }
 
-export function onTaskUncompleted(): void {
+export function onTaskUncompleted(
+  _task: Task,
+  retoggle: () => void,
+): void {
   haptic.light();
-  showToast('Back on your list', { type: 'info' });
+  showToast('Back on your list', {
+    type: 'info',
+    action: { label: 'Undo', onPress: retoggle },
+  });
 }

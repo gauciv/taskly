@@ -3,7 +3,6 @@
  */
 export function logError(context: string, error: unknown): void {
   if (__DEV__) {
-    // eslint-disable-next-line no-console
     console.error(`[${context}]`, error);
   }
 }

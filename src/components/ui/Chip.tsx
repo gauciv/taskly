@@ -1,10 +1,9 @@
 import React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { Colors, Radii, Spacing } from '@/theme/tokens';
+import { Colors, Radii, tintedFill } from '@/theme/tokens';
 import { PressableScale } from './PressableScale';
 import { AppText } from './AppText';
-import { tintedFill } from '@/theme/tokens';
 
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
 

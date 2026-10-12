@@ -13,6 +13,7 @@ import {
   cancelTaskNotification,
 } from '@/services/notifications';
 import { reportError } from '@/utils/errors';
+import { logError } from '@/utils/logger';
 
 interface TaskStore {
   tasks: Task[];
@@ -58,7 +59,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       try {
         const { useNotificationStore } = await import('./useNotificationStore');
         await useNotificationStore.getState().syncInbox(Date.now());
-      } catch {}
+      } catch (err) { logError('tasks.add.syncInbox', err); }
       return task.id;
     } catch (err) {
       reportError(err, { context: 'addTask', userMessage: "Couldn't save your task", retry: () => get().addTask(input) });
@@ -78,7 +79,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       try {
         const { useNotificationStore } = await import('./useNotificationStore');
         await useNotificationStore.getState().syncInbox(Date.now());
-      } catch {}
+      } catch (err) { logError('tasks.update.syncInbox', err); }
     } catch (err) {
       set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? prev : t)) }));
       reportError(err, { context: 'updateTask', userMessage: "Couldn't save your task", retry: () => get().updateTask(id, patch) });
@@ -101,14 +102,20 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         try {
           const { useNotificationStore } = await import('./useNotificationStore');
           await useNotificationStore.getState().markReadForTask(id);
-        } catch {}
+        } catch (err) { logError('tasks.complete.markRead', err); }
         // Fire celebration/feedback
         const { onTaskCompleted } = await import('@/services/feedback');
-        await onTaskCompleted(optimistic, get().tasks, originX, originY);
+        await onTaskCompleted(optimistic, get().tasks, originX, originY, () => {
+          // Undo: un-complete the task
+          get().toggleComplete(id);
+        });
       } else {
         await syncTaskNotification(updated);
         const { onTaskUncompleted } = await import('@/services/feedback');
-        onTaskUncompleted();
+        onTaskUncompleted(updated, () => {
+          // Undo: re-complete the task
+          get().toggleComplete(id);
+        });
       }
     } catch (err) {
       set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? task : t)) }));
@@ -177,7 +184,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       try {
         const { useNotificationStore } = await import('./useNotificationStore');
         useNotificationStore.setState({ items: [], unreadCount: 0 });
-      } catch {}
+      } catch (err) { logError('tasks.reset.clearNotifications', err); }
     } catch (err) {
       reportError(err, { context: 'resetAll', userMessage: "Couldn't reset app data. Try again", retry: () => get().resetAll() });
     }

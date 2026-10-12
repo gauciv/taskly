@@ -11,7 +11,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { usePoppins } from '@/hooks/useFonts';
 import { ToastHost } from '@/components/ui/Toast';
-import { ConfirmHost } from '@/components/ui/ConfirmDialog';
+import { ConfirmHost, confirm } from '@/components/ui/ConfirmDialog';
 import { CelebrationOverlay } from '@/components/ui/CelebrationOverlay';
 import { ErrorScreen } from '@/components/ui/ErrorScreen';
 import { Colors } from '@/theme/tokens';
@@ -22,7 +22,6 @@ import {
 } from '@/services/notifications';
 import { taskDetailsHref } from '@/utils/routes';
 import { logError } from '@/utils/logger';
-import { confirm } from '@/components/ui/ConfirmDialog';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -62,14 +61,16 @@ export default function RootLayout() {
   }, [hydrateTask, hydrateSettings, hydrateNotifs, syncInbox]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     init();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Foreground / background handler: sync inbox on foreground
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        syncInbox(Date.now()).catch(() => {});
+        syncInbox(Date.now()).catch((error) => logError('RootLayout.foregroundSync', error));
       }
     });
     return () => sub.remove();
@@ -79,7 +80,7 @@ export default function RootLayout() {
   useEffect(() => {
     const id = setInterval(() => {
       if (AppState.currentState === 'active') {
-        syncInbox(Date.now()).catch(() => {});
+        syncInbox(Date.now()).catch((error) => logError('RootLayout.intervalSync', error));
       }
     }, 30_000);
     return () => clearInterval(id);
@@ -119,7 +120,9 @@ export default function RootLayout() {
         await db.execAsync('DROP TABLE IF EXISTS categories');
         await db.execAsync('DROP TABLE IF EXISTS notifications');
         await db.execAsync('DROP TABLE IF EXISTS settings');
-      } catch {}
+      } catch (error) {
+        logError('RootLayout.resetDatabase', error);
+      }
       init();
     }
 

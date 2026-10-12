@@ -7,7 +7,8 @@ import * as Haptics from 'expo-haptics';
 
 function isEnabled(): boolean {
   try {
-    // Read from in-memory store (sync) — avoids slow DB read per haptic call
+    // Dynamic require to avoid circular imports at module init time
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { useSettingsStore } = require('@/store/useSettingsStore') as typeof import('@/store/useSettingsStore');
     return useSettingsStore.getState().hapticsEnabled;
   } catch {

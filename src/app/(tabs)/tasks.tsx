@@ -64,6 +64,7 @@ export default function TasksScreen() {
       setStatus(f);
     }
     if (params.category) setCategoryId(Number(params.category));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.filter, params.category]);
 
   function handleSearchChange(text: string) {

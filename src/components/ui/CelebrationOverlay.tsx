@@ -5,7 +5,6 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
-  runOnJS,
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -138,8 +137,18 @@ export function CelebrationOverlay() {
   if (!current || skipCelebrations) return null;
 
   const showConfetti = current.type === 'all_done' || current.type === 'achievement';
+  const showSmallConfetti = current.type === 'default';
   const originX = current.type === 'default' ? current.originX : undefined;
   const originY = current.type === 'default' ? current.originY : undefined;
+
+  // Default events: just a small confetti burst from origin, no overlay card
+  if (current.type === 'default') {
+    return (
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Confetti count={12} originX={originX} originY={originY} onFinish={dismiss} />
+      </View>
+    );
+  }
 
   return (
     <TouchableOpacity
@@ -149,6 +158,7 @@ export function CelebrationOverlay() {
       accessibilityLabel="Dismiss celebration"
     >
       {showConfetti && <Confetti count={40} originX={originX} originY={originY} />}
+      {showSmallConfetti && <Confetti count={12} originX={originX} originY={originY} />}
       <OverlayContent event={current} onDismiss={dismiss} />
     </TouchableOpacity>
   );

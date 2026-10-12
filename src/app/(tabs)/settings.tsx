@@ -12,6 +12,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withSequence,
   withTiming,
   interpolateColor,
   FadeInDown,
@@ -29,7 +30,7 @@ import { showToast } from '@/components/ui/Toast';
 import { confirm } from '@/components/ui/ConfirmDialog';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useTaskStore } from '@/store/useTaskStore';
-import { cancelTaskNotification } from '@/services/notifications';
+import { cancelTaskNotification, ensurePermission } from '@/services/notifications';
 import { useNotificationStatus } from '@/store/useNotificationStatus';
 import { haptic } from '@/utils/feedback';
 import { achievementsHref } from '@/utils/routes';
@@ -39,10 +40,12 @@ interface ToggleSwitchProps {
   value: boolean;
   onValueChange: (v: boolean) => void;
   accessibilityLabel: string;
+  shakeRef?: React.MutableRefObject<() => void>;
 }
 
-function ToggleSwitch({ value, onValueChange, accessibilityLabel }: ToggleSwitchProps) {
+function ToggleSwitch({ value, onValueChange, accessibilityLabel, shakeRef }: ToggleSwitchProps) {
   const progress = useSharedValue(value ? 1 : 0);
+  const shakeX = useSharedValue(0);
 
   const trackStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(
@@ -61,11 +64,32 @@ function ToggleSwitch({ value, onValueChange, accessibilityLabel }: ToggleSwitch
     ),
   }));
 
+  const wrapStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: shakeX.value }],
+  }));
+
   React.useEffect(() => {
+    // Reanimated SharedValue — intentionally mutable, not React state
     // eslint-disable-next-line react-hooks/immutability
     progress.value = withSpring(value ? 1 : 0, SpringConfig);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
+
+  // Expose shake function via ref
+  React.useEffect(() => {
+    if (shakeRef) {
+      shakeRef.current = () => {
+        shakeX.value = withSequence(
+          withTiming(5, { duration: 50 }),
+          withTiming(-5, { duration: 50 }),
+          withTiming(5, { duration: 50 }),
+          withTiming(-5, { duration: 50 }),
+          withTiming(0, { duration: 50 }),
+        );
+      };
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handlePress() {
     haptic.selection();
@@ -80,8 +104,10 @@ function ToggleSwitch({ value, onValueChange, accessibilityLabel }: ToggleSwitch
       accessibilityState={{ checked: value }}
       style={styles.toggleHitArea}
     >
-      <Animated.View style={[styles.toggleTrack, trackStyle]}>
-        <Animated.View style={[styles.toggleThumb, thumbStyle]} />
+      <Animated.View style={wrapStyle}>
+        <Animated.View style={[styles.toggleTrack, trackStyle]}>
+          <Animated.View style={[styles.toggleThumb, thumbStyle]} />
+        </Animated.View>
       </Animated.View>
     </Pressable>
   );
@@ -199,27 +225,42 @@ export default function SettingsScreen() {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(userName);
   const [savingName, setSavingName] = useState(false);
-  const [nameSaved, setNameSaved] = useState(false);
   const inputRef = useRef<TextInput>(null);
+  const remindersShakeRef = useRef<() => void>(() => {});
 
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
   const completedCount = tasks.filter((t) => t.completed).length;
-  const unlockedCount = useTaskStore((s) =>
-    s.tasks.length > 0 ? undefined : undefined
-  );
 
   // Achievements unlock count from settings store
   const achievementsUnlocked = useSettingsStore((s) => s.achievementsUnlocked);
 
-  async function handleSaveName() {
-    setSavingName(true);
+  async function handleRemindersToggle(enabled: boolean) {
+    if (enabled) {
+      // Optimistically enable, then check permission
+      await setNotificationsEnabled(true);
+      const granted = await ensurePermission();
+      if (!granted) {
+        // Revert and shake
+        await setNotificationsEnabled(false);
+        remindersShakeRef.current();
+        haptic.warning();
+        // Toast is shown by ensurePermission via useNotificationStatus; add a warning here too
+        showToast('Notification permission required', {
+          type: 'warning',
+          action: { label: 'Settings', onPress: () => Linking.openSettings() },
+        });
+      }
+    } else {
+      await setNotificationsEnabled(false);
+    }
+  }
+
+  async function handleSaveName() {    setSavingName(true);
     const trimmed = nameInput.trim() || 'Friend';
     await setUserName(trimmed);
     setSavingName(false);
     setEditingName(false);
-    setNameSaved(true);
     showToast('Name saved', { type: 'success' });
-    setTimeout(() => setNameSaved(false), 1200);
   }
 
   async function handleClearCompleted() {
@@ -361,8 +402,9 @@ export default function SettingsScreen() {
             <AppText variant="label" color={Colors.text}>Reminders</AppText>
             <ToggleSwitch
               value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
+              onValueChange={handleRemindersToggle}
               accessibilityLabel="Enable reminders"
+              shakeRef={remindersShakeRef}
             />
           </CardRow>
 

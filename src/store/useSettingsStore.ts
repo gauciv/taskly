@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { getAllSettings, setSetting } from '@/db/settingsRepo';
 import { resyncAll } from '@/services/notifications';
 import { useTaskStore } from './useTaskStore';
+import { logError } from '@/utils/logger';
 
 interface SettingsStore {
   userName: string;
@@ -42,7 +43,9 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     let achievements: Record<string, number> = {};
     try {
       achievements = JSON.parse(settings['achievements'] ?? '{}') as Record<string, number>;
-    } catch {}
+    } catch (error) {
+      logError('settings.parseAchievements', error);
+    }
     set({
       userName: settings['user_name'] ?? 'Friend',
       notificationsEnabled: settings['notifications_enabled'] !== '0',
@@ -69,7 +72,8 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
           await get().unlockAchievement(id); // persist silently
         }
       } catch {
-        // Silent - hydration unlock failure should not crash the app
+        // Keep hydration available while recording the background unlock failure.
+        logError('settings.hydrateAchievements', 'Achievement evaluation failed');
       }
     });
   },

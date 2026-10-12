@@ -21,6 +21,9 @@ A polished dark-themed To-Do List mobile app built with React Native, Expo, and 
 | E6 | Weekly Activity | Bar chart + progress ring on Home showing completed tasks over the last 7 days |
 | E7 | Pull-to-refresh | Available on Home, Tasks, Schedule, and Notifications screens |
 | E8 | Styled dialogs | Custom confirmation dialog (spring animation, warning haptic) for all destructive actions |
+| E9 | Rewards | Completion celebrations, streak tracking, and six unlockable achievements |
+| E10 | Feedback settings | Celebration and haptic toggles, with reduced-motion support |
+| E11 | Error recovery | Visible error toasts with retry actions, form validation, and startup recovery screen |
 
 ## How to run
 

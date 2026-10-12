@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Animated, {
@@ -15,8 +15,7 @@ import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, Spacing, Radii, Typography } from '@/theme/tokens';
 import { AppText } from './AppText';
-import type { WeeklyActivity } from '@/store/selectors';
-import type { StreakResult } from '@/store/selectors';
+import type { WeeklyActivity, StreakResult } from '@/store/selectors';
 import { achievementsHref } from '@/utils/routes';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
