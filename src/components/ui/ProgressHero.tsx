@@ -190,6 +190,7 @@ export function ProgressHero({ data, streak, hasTasks }: Props) {
                   xAxisLabelTextStyle={styles.xLabel}
                   xAxisThickness={0}
                   yAxisThickness={0}
+                  yAxisLabelWidth={0}
                   hideAxesAndRules
                   hideYAxisText
                   hideOrigin
