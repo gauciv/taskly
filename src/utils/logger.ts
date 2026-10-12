@@ -6,3 +6,9 @@ export function logError(context: string, error: unknown): void {
     console.error(`[${context}]`, error);
   }
 }
+
+export function logInfo(context: string, message: string): void {
+  if (__DEV__) {
+    console.info(`[${context}] ${message}`);
+  }
+}

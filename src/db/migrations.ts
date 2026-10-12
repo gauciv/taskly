@@ -51,9 +51,11 @@ export async function runMigrations(): Promise<void> {
     `);
   }
 
-  // Seed categories only when the table is empty
-  const catCount = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM categories;');
-  if ((catCount?.count ?? 0) === 0) {
+  // Seed only when empty, transactionally. INSERT (never REPLACE) avoids
+  // deleting referenced category rows, which would null tasks.category_id.
+  await db.withTransactionAsync(async () => {
+    const catCount = await db.getFirstAsync<{ count: number }>('SELECT COUNT(*) as count FROM categories;');
+    if ((catCount?.count ?? 0) !== 0) return;
     const now = Date.now();
     for (const cat of SEED_CATEGORIES) {
       await db.runAsync(
@@ -61,7 +63,7 @@ export async function runMigrations(): Promise<void> {
         [cat.name, cat.color, cat.icon, now]
       );
     }
-  }
+  });
 
   if (v < 2) {
     await db.execAsync(`

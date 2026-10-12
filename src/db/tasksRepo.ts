@@ -57,7 +57,8 @@ export async function insertTask(input: TaskInput): Promise<Task> {
     ]
   );
   const row = await db.getFirstAsync<TaskRow>('SELECT * FROM tasks WHERE id = ?', [result.lastInsertRowId]);
-  return rowToTask(row!);
+  if (!row) throw new Error('Task was written but could not be read back');
+  return rowToTask(row);
 }
 
 export async function updateTask(id: number, patch: Partial<TaskInput> & { completed?: boolean; completedAt?: number | null; notificationId?: string | null }): Promise<Task> {
@@ -82,7 +83,8 @@ export async function updateTask(id: number, patch: Partial<TaskInput> & { compl
 
   await db.runAsync(`UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`, values);
   const row = await db.getFirstAsync<TaskRow>('SELECT * FROM tasks WHERE id = ?', [id]);
-  return rowToTask(row!);
+  if (!row) throw new Error('Task was written but could not be read back');
+  return rowToTask(row);
 }
 
 export async function deleteTask(id: number): Promise<void> {

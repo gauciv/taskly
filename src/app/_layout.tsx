@@ -21,7 +21,7 @@ import {
   resyncAll,
 } from '@/services/notifications';
 import { taskDetailsHref } from '@/utils/routes';
-import { logError } from '@/utils/logger';
+import { logError, logInfo } from '@/utils/logger';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -42,6 +42,10 @@ export default function RootLayout() {
     try {
       await runMigrations();
       await Promise.all([hydrateTask(), hydrateSettings()]);
+      const categoryCount = useTaskStore.getState().categories.length;
+      const tasks = useTaskStore.getState().tasks;
+      const nullCategoryCount = tasks.filter((task) => task.categoryId == null).length;
+      logInfo('startup.data', `categories=${categoryCount} tasks=${tasks.length} tasksWithoutCategory=${nullCategoryCount}`);
       await resyncAll(useTaskStore.getState().tasks);
       await hydrateNotifs();
       await syncInbox(Date.now());

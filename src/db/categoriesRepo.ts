@@ -33,5 +33,6 @@ export async function insertCategory(name: string, color: string, icon: string):
     [name, color, icon, now]
   );
   const row = await db.getFirstAsync<CategoryRow>('SELECT * FROM categories WHERE id = ?', [result.lastInsertRowId]);
-  return rowToCategory(row!);
+  if (!row) throw new Error('Category was written but could not be read back');
+  return rowToCategory(row);
 }
