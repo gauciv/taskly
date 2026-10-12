@@ -39,7 +39,7 @@ const variantConfig: Record<Variant, { bg: string; textColor: string; borderColo
 
 const sizeConfig: Record<Size, { paddingH: number; paddingV: number; height: number }> = {
   sm: { paddingH: Spacing.s3,  paddingV: Spacing.s2, height: 36 },
-  md: { paddingH: Spacing.s5,  paddingV: Spacing.s3, height: 48 },
+  md: { paddingH: 28,          paddingV: Spacing.s3, height: 48 },
   lg: { paddingH: Spacing.s5,  paddingV: Spacing.s4, height: 56 },
 };
 
@@ -141,7 +141,7 @@ export function Button({
           <AppText
             variant="label"
             color={vc.textColor}
-            style={[Typography.label, { fontFamily: 'Poppins_600SemiBold' }]}
+            style={[Typography.label, { fontFamily: 'Poppins_600SemiBold', flexShrink: 0 }]}
           >
             {label}
           </AppText>

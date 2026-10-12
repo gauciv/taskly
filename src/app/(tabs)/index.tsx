@@ -144,7 +144,7 @@ export default function HomeScreen() {
         )}
 
         {/* Tasks Today */}
-        <Animated.View entering={FadeInDown.delay(180).duration(220)} style={styles.section}>
+        <Animated.View entering={FadeInDown.delay(180).duration(220)} style={[styles.section, todaySlice.length === 0 && styles.emptyTaskSection]}>
           <SectionHeader
             title="Tasks Today!"
             onSeeMore={() => router.push('/(tabs)/tasks')}
@@ -205,6 +205,7 @@ const NOTCH_SIZE = 22;
 const styles = StyleSheet.create({
   scroll: {
     paddingTop: 0,
+    flexGrow: 1,
   },
   header: {
     flexDirection: 'row',
@@ -226,6 +227,9 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: Spacing.sectionGap,
+  },
+  emptyTaskSection: {
+    flexGrow: 1,
   },
   activityRow: {
     paddingHorizontal: Spacing.screenH,

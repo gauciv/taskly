@@ -1,18 +1,9 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withSequence,
-  withTiming,
-  Easing,
-} from 'react-native-reanimated';
-import { Colors, Spacing } from '@/theme/tokens';
+import { Colors, Spacing, TabBar } from '@/theme/tokens';
 import { AppText } from './AppText';
 import { Button } from './Button';
-import { useMotionPrefs } from '@/hooks/useMotionPrefs';
 
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
 
@@ -25,34 +16,11 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ icon = 'inbox', title, subtitle, actionLabel, onAction }: EmptyStateProps) {
-  const { reduceMotion } = useMotionPrefs();
-  const translateY = useSharedValue(0);
-
-  useEffect(() => {
-    if (reduceMotion) {
-      translateY.value = 0;
-      return;
-    }
-    translateY.value = withRepeat(
-      withSequence(
-        withTiming(-4, { duration: 1200, easing: Easing.inOut(Easing.sin) }),
-        withTiming(4, { duration: 1200, easing: Easing.inOut(Easing.sin) })
-      ),
-      -1,
-      true
-    );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reduceMotion]);
-
-  const floatStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
-
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.iconCluster, floatStyle]}>
+      <View style={styles.iconCluster}>
         <View style={styles.iconBg}>
-          <Feather name={icon} size={32} color={Colors.textFaint} />
+          <Feather name={icon} size={36} color={Colors.textFaint} />
         </View>
         <View style={[styles.iconDot, styles.dot1]}>
           <Feather name="star" size={12} color={Colors.lime} />
@@ -60,41 +28,35 @@ export function EmptyState({ icon = 'inbox', title, subtitle, actionLabel, onAct
         <View style={[styles.iconDot, styles.dot2]}>
           <Feather name="circle" size={8} color={Colors.purple} />
         </View>
-      </Animated.View>
-      <AppText variant="title" color={Colors.text} style={styles.title}>
-        {title}
-      </AppText>
-      {subtitle && (
-        <AppText variant="body" color={Colors.textMuted} style={styles.subtitle}>
-          {subtitle}
-        </AppText>
-      )}
-      {actionLabel && onAction && (
+      </View>
+      <AppText variant="h2" color={Colors.text} style={styles.title}>{title}</AppText>
+      {subtitle ? <AppText variant="body" color={Colors.textMuted} style={styles.subtitle}>{subtitle}</AppText> : null}
+      {actionLabel && onAction ? (
         <Button label={actionLabel} onPress={onAction} style={styles.action} />
-      )}
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: Spacing.s8,
-    paddingHorizontal: Spacing.s6,
-    gap: Spacing.s3,
+    paddingHorizontal: Spacing.s8,
+    paddingBottom: TabBar.height + Spacing.s6,
   },
   iconCluster: {
-    width: 80,
-    height: 80,
-    marginBottom: Spacing.s2,
-    position: 'relative',
+    width: 96,
+    height: 96,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: Spacing.s6,
   },
   iconBg: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: Colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
@@ -108,9 +70,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dot1: { top: 0, right: 0 },
-  dot2: { bottom: 4, left: 0 },
-  title: { textAlign: 'center' },
-  subtitle: { textAlign: 'center', lineHeight: 20 },
-  action: { marginTop: Spacing.s2 },
+  dot1: { top: 2, right: 2 },
+  dot2: { bottom: 4, left: 2 },
+  title: { textAlign: 'center', lineHeight: 28 },
+  subtitle: { marginTop: Spacing.s2, maxWidth: 280, textAlign: 'center', lineHeight: 20 },
+  action: { alignSelf: 'center', minWidth: 200, marginTop: Spacing.s6 },
 });
