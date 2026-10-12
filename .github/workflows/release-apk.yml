@@ -100,8 +100,9 @@ jobs:
       - name: Validate Expo config
         run: npx expo config --type public > /dev/null
       - name: Generate the native Android project
+        id: prebuild
         env:
-          EXPO_DEBUG: ${{ github.event_name == 'workflow_dispatch' && inputs.debug && '1' || '' }}
+          EXPO_DEBUG: ${{ github.event_name == 'workflow_dispatch' && inputs.debug && '1' || '0' }}
         run: npx expo prebuild --platform android --clean --no-install
       - name: Accept Android SDK licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
@@ -209,13 +210,19 @@ jobs:
         if: always()
         env:
           GRADLE_RESULT: ${{ steps.gradle_build.outcome }}
+          PREBUILD_RESULT: ${{ steps.prebuild.outcome }}
           APK_RESULT: ${{ steps.package_apk.outcome }}
           CHANGELOG_RESULT: ${{ steps.changelog.outcome }}
           UPLOAD_RESULT: ${{ steps.upload_apk.outcome }}
           RELEASE_RESULT: ${{ steps.publish_release.outcome }}
         run: |
+          mkdir -p diagnostics
+          if [[ ! -f diagnostics/REPORT.md ]]; then
+            printf '# Android release build report\n\n## Verdict\n\nGradle did not start; inspect the prebuild/configuration step and workflow outcomes below.\n' > diagnostics/REPORT.md
+          fi
           {
             printf '\n## Post-build workflow outcomes\n\n'
+            printf -- '- Native prebuild: **%s**\n' "$PREBUILD_RESULT"
             printf -- '- Gradle build: **%s**\n' "$GRADLE_RESULT"
             printf -- '- APK packaging: **%s**\n' "$APK_RESULT"
             printf -- '- Changelog generation: **%s**\n' "$CHANGELOG_RESULT"
