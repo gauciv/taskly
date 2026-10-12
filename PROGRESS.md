@@ -141,7 +141,7 @@ Last updated: 2026-10-12
 - [x] U10.3  preflight.sh with probes P1–P12 (never fails the job)
 - [x] U10.4  gradle-build.sh: retries, failure pipeline, REPORT.md
 - [x] U10.5  Workflow integration, YAML/bash validation, README "Debugging the release build"
-- [ ] U10.6  Final QA and report
+- [x] U10.6  Final QA and report
 
 ## Decisions
 - Fix 10 supersedes Fix 9 U9.1 local Gradle reproduction; all build diagnosis will run in GitHub Actions, and Gradle will not be run locally.
@@ -153,3 +153,4 @@ Last updated: 2026-10-12
 - U10.5: pinned Node 22 (the RN 0.86.3 and Gradle plugin engine ranges accept `^22.13.0`); added boolean dispatch debug, full diagnostics/artifact/release ordering, previous-tag output for conventional changelog generation, and README recovery instructions. The trigger uses GitHub's `v*` glob and the gate enforces plain `vX.Y.Z` with Bash regex so prereleases are ignored. Manual dispatch always builds only an artifact, even when run from a tag. YAML structure/order, all scripts' Bash syntax, 16 analyzer fixtures, dry preflight, and five version-gate cases pass. `actionlint` and `shellcheck` are not installed, so PyYAML and `bash -n` were used.
 - U10.5 follow-up: the package script diff matched Expo's native-project auto-update (`expo run:*`) from the user's local Android attempt; restored the committed Expo Go scripts. The user-provided `gradle-debug.log` remains only until final cleanup; its DNS failure was captured in this decision log.
 - U10.5 review hardening: network retries now inspect an isolated log for the current attempt (a previous transient failure cannot cause a retry of a later non-network failure). P5 also fails its probe on an invalid `npm ls` tree, not only duplicate versions.
+- U10.6: TypeScript and Expo lint pass; all six CI scripts pass `bash -n`; analyzer 16/16, shim stdout/exit/stderr/stdin checks, case scan, dry preflight, PyYAML workflow structure/order, and five tag-gate simulations pass. `shellcheck`/`actionlint` are unavailable. No Gradle was run locally, as required; the observed input log matched the retryable DNS/network signature. Test diagnostics and the supplied Gradle log were removed, and no native folders, APKs, or diagnostics remain in Git status.
