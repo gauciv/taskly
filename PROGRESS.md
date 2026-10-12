@@ -63,6 +63,16 @@ Last updated: 2026-10-11
 - U3: ErrorScreen used for startup failure and ErrorBoundary; raw error shown only in __DEV__.
 - U3: "last_all_done_day" persisted in settings to fire all-done overlay at most once per day.
 
+## Fix 4
+- [x] U4.1  Hero card rebuilt with in-flow flex structure (root cause logged)
+- [ ] U4.2  Audit of other U3 components for collapse/overlap
+- [ ] U4.3  Idle animations removed; EmptyState static, centered, full button label
+- [ ] U4.4  Final QA, grep checks, commit
+
+## Decisions
+- Fix 4 supersedes UI Update 3 §6 item 9 (floating empty-state icons) and the bell-wiggle in §6 item 5: the app has NO idle or looping decorative animations.
+- U4.1 root cause: the hero's auto-height card contained a `flex: 1` row and a `flex: 1` right column while only a `maxHeight` constrained it, creating a cyclic height measurement in the Home ScrollView; the chart also combined its bars and labels inside a fixed-height plot. The replacement uses in-flow rows, an uncapped card with `minHeight`, and separate fixed-height plot/label rows.
+
 ## Known issues
 (non-blocking bugs or warnings)
 

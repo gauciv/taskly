@@ -25,7 +25,7 @@ function getNotif(): ExpoNotifications | null {
     const mod = require('expo-notifications') as ExpoNotifications;
     _notif = mod;
   } catch {
-    logError('notifications.loadModule', 'expo-notifications unavailable');
+    // Expected in Expo Go builds where expo-notifications is unavailable.
     _notif = null;
   }
   return _notif;

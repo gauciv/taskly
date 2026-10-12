@@ -2,192 +2,121 @@ import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Animated, {
-  useSharedValue,
-  useAnimatedProps,
-  withTiming,
-  withDelay,
   Easing,
-  FadeInDown,
+  FadeIn,
+  useAnimatedProps,
+  useAnimatedStyle,
   useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withTiming,
 } from 'react-native-reanimated';
-import type { SharedValue } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Colors, Spacing, Radii, Typography } from '@/theme/tokens';
+import { Colors, Radii, Spacing, Typography } from '@/theme/tokens';
 import { AppText } from './AppText';
 import type { WeeklyActivity, StreakResult } from '@/store/selectors';
 import { achievementsHref } from '@/utils/routes';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-
 const RING_SIZE = 84;
 const RING_STROKE = 8;
-const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
+const RING_RADIUS = 38;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+const CHART_HEIGHT = 56;
+const MIN_BAR_HEIGHT = 4;
 
-const BAR_MAX_HEIGHT = 56;
-const BAR_MIN_STUB = 4;
-
-// ── Progress Ring ─────────────────────────────────────────────────────────────
-function ProgressRing({
-  done,
-  total,
-  reducedMotion,
-}: {
-  done: number;
-  total: number;
-  reducedMotion: boolean;
-}) {
+function ProgressRing({ done, total, reduceMotion }: { done: number; total: number; reduceMotion: boolean }) {
   const progress = useSharedValue(0);
+  const freeDay = total === 0;
   const allDone = total > 0 && done >= total;
-  const isFreeDay = total === 0;
-  const pct = total === 0 ? 0 : Math.min(1, done / total);
+  const fraction = total === 0 ? 0 : Math.min(1, done / total);
 
   useEffect(() => {
-    const target = pct;
-    if (reducedMotion) {
-      progress.value = target;
-    } else {
-      progress.value = withTiming(target, { duration: 700, easing: Easing.out(Easing.cubic) });
-    }
+    progress.value = reduceMotion
+      ? fraction
+      : withTiming(fraction, { duration: 650, easing: Easing.out(Easing.cubic) });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pct, reducedMotion]);
+  }, [fraction, reduceMotion]);
 
-  const animatedProps = useAnimatedProps(() => ({
+  const ringProps = useAnimatedProps(() => ({
     strokeDashoffset: RING_CIRCUMFERENCE * (1 - progress.value),
   }));
-
-  const ringColor = allDone ? Colors.success : Colors.lime;
-  const trackColor = Colors.purple + '40';
+  const ringColor = freeDay ? Colors.textFaint : allDone ? Colors.success : Colors.lime;
 
   return (
-    <View style={styles.ringWrap}>
-      <Svg width={RING_SIZE} height={RING_SIZE}>
-        <Circle
-          cx={RING_SIZE / 2}
-          cy={RING_SIZE / 2}
-          r={RING_RADIUS}
-          stroke={trackColor}
-          strokeWidth={RING_STROKE}
-          fill="none"
-        />
-        {!isFreeDay && (
+    <View style={styles.ringBox}>
+      <Svg width={RING_SIZE} height={RING_SIZE} viewBox="0 0 84 84">
+        <Circle cx={42} cy={42} r={RING_RADIUS} stroke={Colors.purple + '40'} strokeWidth={RING_STROKE} fill="none" />
+        {!freeDay && (
           <AnimatedCircle
-            cx={RING_SIZE / 2}
-            cy={RING_SIZE / 2}
+            cx={42}
+            cy={42}
             r={RING_RADIUS}
             stroke={ringColor}
             strokeWidth={RING_STROKE}
             fill="none"
             strokeDasharray={RING_CIRCUMFERENCE}
-            animatedProps={animatedProps}
+            animatedProps={ringProps}
             strokeLinecap="round"
             rotation="-90"
-            origin={`${RING_SIZE / 2}, ${RING_SIZE / 2}`}
+            origin="42, 42"
           />
         )}
       </Svg>
-      <View style={styles.ringCenter}>
-        {isFreeDay ? (
-          <AppText variant="label" color={Colors.textFaint} style={styles.ringDash}>–</AppText>
+      <View style={[StyleSheet.absoluteFill, styles.ringLabel]}>
+        {freeDay ? (
+          <AppText variant="label" color={Colors.textFaint}>–</AppText>
         ) : allDone ? (
-          <Feather name="check" size={22} color={Colors.success} />
+          <Feather name="check" size={28} color={Colors.success} />
         ) : (
-          <AppText variant="title" color={Colors.text} style={styles.ringText}>
-            {done}/{total}
-          </AppText>
+          <AppText variant="title" color={Colors.text} style={styles.ringText}>{done}/{total}</AppText>
         )}
       </View>
     </View>
   );
 }
 
-// ── Mini Bar ──────────────────────────────────────────────────────────────────
 function MiniBar({
   count,
   maxCount,
   isToday,
   index,
   label,
-  reducedMotion,
-  onPress,
+  reduceMotion,
   selected,
+  onPress,
 }: {
   count: number;
   maxCount: number;
   isToday: boolean;
   index: number;
   label: string;
-  reducedMotion: boolean;
-  onPress: () => void;
+  reduceMotion: boolean;
   selected: boolean;
+  onPress: () => void;
 }) {
-  const heightAnim = useSharedValue(0);
-  const effectiveMax = Math.max(maxCount, 3);
-  const barH = count === 0 ? BAR_MIN_STUB : Math.max(BAR_MIN_STUB + 2, Math.round((count / effectiveMax) * BAR_MAX_HEIGHT));
+  const progress = useSharedValue(0);
+  const max = Math.max(maxCount, 3);
+  const barHeight = count === 0 ? MIN_BAR_HEIGHT : Math.max(MIN_BAR_HEIGHT + 2, Math.round((count / max) * CHART_HEIGHT));
 
   useEffect(() => {
-    if (reducedMotion) {
-      heightAnim.value = 1;
-    } else {
-      heightAnim.value = withDelay(
-        index * 40,
-        withTiming(1, { duration: 450, easing: Easing.out(Easing.cubic) })
-      );
-    }
+    progress.value = reduceMotion
+      ? 1
+      : withDelay(index * 40, withTiming(1, { duration: 450, easing: Easing.out(Easing.cubic) }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [count, maxCount, reducedMotion]);
+  }, [barHeight, reduceMotion]);
 
-  // Bar is drawn inside a fixed-height track using absolute positioning from bottom
-  const barColor = isToday ? Colors.lime : Colors.purple + '73';
-  const selectedColor = isToday ? Colors.lime : Colors.purple;
+  const barStyle = useAnimatedStyle(() => ({ height: Math.max(1, barHeight * progress.value) }));
+  const color = isToday ? Colors.lime : selected ? Colors.purple : Colors.purple + '73';
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={styles.barCol}
-      accessibilityLabel={`${label}: ${count} completed`}
-    >
-      <View style={styles.barTrack}>
-        <AnimatedMiniBar
-          heightAnim={heightAnim}
-          barH={barH}
-          color={selected ? selectedColor : barColor}
-        />
-      </View>
-      <AppText
-        variant="caption"
-        color={isToday ? Colors.lime : Colors.textFaint}
-        style={styles.barLabel}
-      >
-        {label}
-      </AppText>
+    <Pressable onPress={onPress} style={styles.barCol} accessibilityLabel={`${label}: ${count} completed`}>
+      <Animated.View style={[styles.bar, barStyle, { backgroundColor: color }]} />
     </Pressable>
   );
 }
 
-function AnimatedMiniBar({
-  heightAnim,
-  barH,
-  color,
-}: {
-  heightAnim: SharedValue<number>;
-  barH: number;
-  color: string;
-}) {
-  const animStyle = {
-    width: '100%' as const,
-    height: barH,
-    borderRadius: 8,
-    backgroundColor: color,
-    transform: [{ scaleY: heightAnim }],
-    transformOrigin: 'bottom' as const,
-  };
-
-  return <Animated.View style={animStyle} />;
-}
-
-// ── ProgressHero ──────────────────────────────────────────────────────────────
 interface Props {
   data: WeeklyActivity;
   streak: StreakResult;
@@ -195,116 +124,69 @@ interface Props {
 }
 
 export function ProgressHero({ data, streak, hasTasks }: Props) {
-  const reducedMotion = useReducedMotion();
+  const reduceMotion = !!useReducedMotion();
   const [selectedDayIdx, setSelectedDayIdx] = useState<number | null>(null);
-
   if (!hasTasks) return null;
 
-  const maxCount = Math.max(...data.days.map((d) => d.count));
-
-  // Delta pill
+  const maxCount = Math.max(0, ...data.days.map((day) => day.count));
   const delta = data.total - data.previousTotal;
   const deltaLabel = delta > 0 ? `▲ ${delta}` : delta < 0 ? `▼ ${Math.abs(delta)}` : '–';
   const deltaColor = delta > 0 ? Colors.success : delta < 0 ? Colors.danger : Colors.textMuted;
-
-  // Headline: selected day or weekly total
-  const selectedDay = selectedDayIdx !== null ? data.days[selectedDayIdx] : null;
-  const weekDayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  function handleBarPress(idx: number) {
-    setSelectedDayIdx((prev) => (prev === idx ? null : idx));
-  }
+  const selectedDay = selectedDayIdx === null ? null : data.days[selectedDayIdx];
+  const weekday = selectedDay ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(selectedDay.dayMs).getDay()] : '';
 
   return (
-    <Animated.View
-      entering={FadeInDown.delay(60).duration(220)}
-      style={styles.card}
-    >
-      {/* Row layout */}
-      <View style={styles.row}>
-        {/* Left: progress ring */}
-        <View style={styles.leftZone}>
-          <ProgressRing
-            done={data.todayDone}
-            total={data.todayTotal}
-            reducedMotion={!!reducedMotion}
-          />
+    <Animated.View entering={FadeIn.duration(200)} style={styles.wrapper}>
+      <View style={styles.card}>
+        <View style={styles.left}>
+          <ProgressRing done={data.todayDone} total={data.todayTotal} reduceMotion={reduceMotion} />
           <AppText
             variant="caption"
             color={data.todayTotal > 0 && data.todayDone >= data.todayTotal ? Colors.success : Colors.textMuted}
-            style={styles.todayCaption}
           >
-            {data.todayTotal > 0 && data.todayDone >= data.todayTotal ? 'All done' : 'Today'}
+            {data.todayTotal === 0 ? 'Free day' : data.todayDone >= data.todayTotal ? 'All done' : 'Today'}
           </AppText>
         </View>
-
-        {/* Divider */}
         <View style={styles.divider} />
-
-        {/* Right: week summary + mini bars */}
-        <View style={styles.rightZone}>
-          {/* Header row */}
+        <View style={styles.right}>
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
               <AppText variant="caption" color={Colors.textMuted}>This week</AppText>
               <View style={[styles.deltaPill, { backgroundColor: deltaColor + '22' }]}>
-                <AppText variant="caption" color={deltaColor} style={styles.deltaText}>
-                  {deltaLabel}
-                </AppText>
+                <AppText variant="caption" color={deltaColor}>{deltaLabel}</AppText>
               </View>
             </View>
-            {/* Streak pill — shown when streak >= 1 */}
             {streak.current >= 1 && (
-              <Pressable
-                onPress={() => router.push(achievementsHref)}
-                accessibilityLabel={`${streak.current} day streak`}
-                style={styles.streakPill}
-              >
+              <Pressable onPress={() => router.push(achievementsHref)} accessibilityLabel={`${streak.current} day streak`} style={styles.streakPill}>
                 <Feather name="zap" size={11} color={Colors.lime} />
-                <AppText variant="caption" color={Colors.lime} style={styles.streakText}>
-                  {streak.current}
-                </AppText>
+                <AppText variant="caption" color={Colors.lime}>{streak.current}</AppText>
               </Pressable>
             )}
           </View>
-
-          {/* Headline */}
           <View style={styles.headlineRow}>
-            {selectedDay ? (
-              <Animated.View style={styles.headlineInner}>
-                <AppText variant="h1" color={Colors.text} style={styles.bigNum}>
-                  {selectedDay.count}
-                </AppText>
-                <AppText variant="caption" color={Colors.textMuted} style={styles.headlineSub}>
-                  · {weekDayNames[new Date(selectedDay.dayMs).getDay()]}
-                </AppText>
-              </Animated.View>
-            ) : (
-              <View style={styles.headlineInner}>
-                <AppText variant="h1" color={Colors.text} style={styles.bigNum}>
-                  {data.total}
-                </AppText>
-                <AppText variant="caption" color={Colors.textMuted} style={styles.headlineSub}>
-                  completed
-                </AppText>
-              </View>
-            )}
+            <Animated.View key={selectedDay ? `day-${selectedDayIdx}` : 'total'} entering={FadeIn.duration(160)} style={styles.headlineInner}>
+              <AppText variant="h1" color={Colors.text} style={styles.bigNum}>{selectedDay ? selectedDay.count : data.total}</AppText>
+              <AppText variant="caption" color={Colors.textMuted}>{selectedDay ? `· ${weekday}` : 'completed'}</AppText>
+            </Animated.View>
           </View>
-
-          {/* Mini bar chart */}
-          <View style={styles.barChart}>
-            {data.days.map((day, i) => (
+          <View style={styles.chart}>
+            {data.days.map((day, index) => (
               <MiniBar
-                key={day.dayMs}
-                count={day.count}
-                maxCount={maxCount}
-                isToday={i === 6}
-                index={i}
-                label={day.label}
-                reducedMotion={!!reducedMotion}
-                onPress={() => handleBarPress(i)}
-                selected={selectedDayIdx === i}
-              />
+                  key={day.dayMs}
+                  count={day.count}
+                  maxCount={maxCount}
+                  isToday={index === data.days.length - 1}
+                  index={index}
+                  label={day.label}
+                  reduceMotion={reduceMotion}
+                  selected={selectedDayIdx === index}
+                  onPress={() => setSelectedDayIdx((current) => current === index ? null : index)}
+                />
+            ))}
+          </View>
+          <View style={styles.labelsRow}>
+            {data.days.map((day) => (
+              <AppText key={`label-${day.dayMs}`} variant="caption" color={Colors.textFaint} style={styles.barLabel}>{day.label}</AppText>
             ))}
           </View>
         </View>
@@ -314,128 +196,35 @@ export function ProgressHero({ data, streak, hasTasks }: Props) {
 }
 
 const styles = StyleSheet.create({
+  wrapper: { marginHorizontal: Spacing.screenH, marginBottom: Spacing.s6 },
   card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.s4,
+    padding: Spacing.s4,
+    minHeight: 148,
+    flexShrink: 0,
     backgroundColor: Colors.surface,
     borderRadius: Radii.card,
-    padding: Spacing.s4,
     borderWidth: 1,
     borderColor: Colors.border,
-    marginHorizontal: Spacing.screenH,
-    marginBottom: Spacing.sectionGap,
-    maxHeight: 168,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: Spacing.s4,
-    flex: 1,
-  },
-  leftZone: {
-    width: 104,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  ringWrap: {
-    width: RING_SIZE,
-    height: RING_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ringCenter: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ringText: {
-    ...Typography.title,
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 18,
-    lineHeight: 24,
-  },
-  ringDash: {
-    ...Typography.title,
-  },
-  todayCaption: {
-    ...Typography.caption,
-  },
-  divider: {
-    width: 1,
-    backgroundColor: Colors.border,
-    alignSelf: 'stretch',
-  },
-  rightZone: {
-    flex: 1,
-    justifyContent: 'space-between',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  deltaPill: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 999,
-  },
-  deltaText: {
-    ...Typography.caption,
-  },
-  streakPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: Colors.lime + '18',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  streakText: {
-    ...Typography.caption,
-    fontFamily: 'Poppins_600SemiBold',
-  },
-  headlineRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  headlineInner: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  bigNum: {
-    ...Typography.h1,
-    fontSize: 32,
-    lineHeight: 38,
-  },
-  headlineSub: {
-    ...Typography.caption,
-  },
-  barChart: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    height: BAR_MAX_HEIGHT,
-  },
-  barCol: {
-    flex: 1,
-    alignItems: 'center',
-    maxWidth: 20,
-    gap: 3,
-  },
-  barTrack: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  barLabel: {
-    fontSize: 10,
-    lineHeight: 14,
-  },
+  left: { width: 104, alignItems: 'center', justifyContent: 'center', gap: Spacing.s1, flexShrink: 0 },
+  ringBox: { width: RING_SIZE, height: RING_SIZE, alignItems: 'center', justifyContent: 'center' },
+  ringLabel: { alignItems: 'center', justifyContent: 'center' },
+  ringText: { ...Typography.title, fontSize: 18, lineHeight: 24 },
+  divider: { width: 1, alignSelf: 'stretch', backgroundColor: Colors.border },
+  right: { flex: 1, minWidth: 0, justifyContent: 'space-between' },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.s2, minWidth: 0 },
+  deltaPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: Radii.chip },
+  streakPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: Colors.lime + '18', paddingHorizontal: 7, paddingVertical: 3, borderRadius: Radii.chip },
+  headlineRow: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.s2 },
+  bigNum: { ...Typography.h1, fontSize: 32, lineHeight: 38 },
+  chart: { height: CHART_HEIGHT, flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
+  barCol: { flex: 1, height: CHART_HEIGHT, justifyContent: 'flex-end', alignItems: 'center' },
+  bar: { width: '100%', minHeight: MIN_BAR_HEIGHT, borderRadius: 8 },
+  labelsRow: { flexDirection: 'row', gap: 6 },
+  barLabel: { flex: 1, textAlign: 'center', fontSize: 10, lineHeight: 14, fontWeight: '500' },
+  headlineInner: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.s2 },
 });
