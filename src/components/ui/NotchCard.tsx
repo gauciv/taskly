@@ -59,7 +59,7 @@ export function NotchCard({ color, icon, children, style }: NotchCardProps) {
         </Svg>
       )}
       {icon && (
-        <View style={[styles.iconTile, { backgroundColor: tintedFill('#000000') }]}>
+        <View style={[styles.iconTile, { backgroundColor: tintedFill(Colors.onAccent) }]}>
           <Feather name={icon} size={18} color={Colors.onAccent} />
         </View>
       )}

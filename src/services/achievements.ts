@@ -4,6 +4,7 @@
  */
 import { Task } from '@/types';
 import { selectStreak } from '@/store/selectors';
+import { Colors } from '@/theme/tokens';
 
 export interface AchievementDef {
   id: string;
@@ -21,7 +22,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     title: 'First Step',
     description: 'Complete your first task',
     icon: 'flag',
-    color: '#D9FF3F', // lime
+    color: Colors.lime,
     evaluate: (tasks) => ({
       unlocked: tasks.some((t) => t.completed),
     }),
@@ -31,7 +32,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     title: 'Ten Down',
     description: '10 tasks completed in total',
     icon: 'check-circle',
-    color: '#29C7E8', // cyan
+    color: Colors.cyan,
     evaluate: (tasks) => {
       const count = tasks.filter((t) => t.completed).length;
       return { unlocked: count >= 10, progress: count, max: 10 };
@@ -42,7 +43,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     title: 'On a Roll',
     description: '3-day streak',
     icon: 'zap',
-    color: '#FF9F6B', // orange
+    color: Colors.orange,
     evaluate: (tasks, now) => {
       const { current } = selectStreak(tasks, now);
       return { unlocked: current >= 3, progress: current, max: 3 };
@@ -53,7 +54,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     title: 'Week Warrior',
     description: '7-day streak',
     icon: 'award',
-    color: '#8B7CFF', // purple
+    color: Colors.purple,
     evaluate: (tasks, now) => {
       const { current } = selectStreak(tasks, now);
       return { unlocked: current >= 7, progress: current, max: 7 };
@@ -64,7 +65,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     title: 'Clean Slate',
     description: 'Finish everything due on a day with 2+ tasks',
     icon: 'sun',
-    color: '#FF7AA8', // pink
+    color: Colors.pink,
     evaluate: (tasks, now) => {
       // Check if any day (by dueAt) had ≥2 tasks and all are completed
       const dayMap: Record<number, { total: number; done: number }> = {};
@@ -88,7 +89,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     title: 'Early Bird',
     description: 'Complete a task before its due time',
     icon: 'clock',
-    color: '#D9FF3F', // lime
+    color: Colors.lime,
     evaluate: (tasks, now) => {
       const unlocked = tasks.some(
         (t) =>

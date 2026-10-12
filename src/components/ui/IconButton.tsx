@@ -51,7 +51,7 @@ export function IconButton({
       {showDot && <View style={styles.dot} />}
       {showNum && (
         <View style={styles.numBadge}>
-          <AppText variant="caption" color="#fff" style={styles.numText}>
+          <AppText variant="caption" color={Colors.text} style={styles.numText}>
             {numLabel}
           </AppText>
         </View>

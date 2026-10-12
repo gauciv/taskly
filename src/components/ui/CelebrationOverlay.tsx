@@ -8,7 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Colors, Spacing, Radii, SpringConfig, tintedFill } from '@/theme/tokens';
+import { Colors, Spacing, Radii, SpringConfig, tintedFill, withAlpha } from '@/theme/tokens';
 import { AppText } from './AppText';
 import { Button } from './Button';
 import { Confetti } from './Confetti';
@@ -168,7 +168,7 @@ export function CelebrationOverlay() {
 
 const styles = StyleSheet.create({
   backdrop: {
-    backgroundColor: '#000',
+    backgroundColor: withAlpha(Colors.bg, 0.5),
   },
   centerer: {
     flex: 1,
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     gap: Spacing.s3,
     borderWidth: 1,
     borderColor: Colors.border,
-    shadowColor: '#000',
+    shadowColor: Colors.bg,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.5,
     shadowRadius: 24,

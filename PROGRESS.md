@@ -1,7 +1,7 @@
 # Taskly: Build Progress
-Status: COMPLETE   <!-- set to COMPLETE only after P11.8 -->
-Current phase: P11
-Last updated: 2026-10-11
+Status: COMPLETE
+Current phase: Final U7
+Last updated: 2026-10-12
 
 ## Checklist (tick [x] only when verified)
 - P0:  [x] 0.1 [x] 0.2 [x] 0.3 [x] 0.4 [x] 0.5 [x] 0.6
@@ -105,7 +105,7 @@ Last updated: 2026-10-11
 - U6.6 layout/path review: Task Details remains scrollable above its sibling safe-area action bar at compact and tall viewport sizes. Date-only due-today, timed overdue, completed, upcoming, and none states route through `getDueStatus`; notification inbox keeps timed +60-minute and date-only next-day overdue thresholds. Category write/read/hydrate/edit paths preserve numeric IDs; no deterministic startup loss source was found in this checkout, and previously nulled IDs cannot be reconstructed.
 
 ## Known issues
-(non-blocking bugs or warnings)
+- Android export succeeds. The runner emits a Node `NO_COLOR` ignored because `FORCE_COLOR` is set notice; it does not affect the app bundle.
 
 ## Blockers
 (anything that stopped progress; empty if none)
@@ -113,9 +113,10 @@ Last updated: 2026-10-11
 ## Final
 - [x] U7.1  Circular checkbox (empty ring / lime check), burst unmounted at rest, inner dot removed
 - [x] U7.2  Labeled priority pill on cards, no standalone dots
-- [ ] U7.3  Final QA: tsc, lint, doctor, bundle, hygiene, acceptance audit, app.json
+- [x] U7.3  Final QA: tsc, lint, doctor, bundle, hygiene, acceptance audit, app.json
 - [ ] U7.4  README + demo script, Status: COMPLETE, final commit
 
 ## Decisions
 - U7.1 root cause: the old checkbox intentionally rendered the category-colored ring burst and its sparks whenever motion was enabled, even at progress zero, so the ring/spark overlap read as a permanent inner dot. The replacement mounts the burst only while its shared progress is active; the resting unchecked tree contains only the empty circular outline.
 - U7.2: `PriorityBadge` is only used by the shared `TaskCard`, so Home, Tasks, and Schedule now all render the same flag-and-label pill after the due label or alone when there is no due date. A source search found no remaining priority-dot mode or list-specific priority indicator.
+- U7.3: TypeScript, lint, Expo Doctor (21/21), and Android export pass. Hygiene scan found no source color literals outside theme tokens, no `console.*` outside logger, no `withRepeat`, and no empty catches outside the haptics helper; the notification loader's optional-module catch logs DEV info. Removed seven unused direct Expo packages while retaining Expo Router peers and the chart's Expo gradient peer. Acceptance trace covered center add/prefilled Schedule date, CRUD + confirmation/Undo, shared completion/celebration path, Details/edit, SQLite/category persistence, due status, search/filter, notifications, settings/reset, achievements, and app metadata.

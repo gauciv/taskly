@@ -13,6 +13,7 @@ import { formatDueLabel } from '@/utils/date';
 import { logError, logInfo } from '@/utils/logger';
 import { reportError } from '@/utils/errors';
 import { showToast } from '@/components/ui/Toast';
+import { Colors } from '@/theme/tokens';
 
 // ── Lazy loader ───────────────────────────────────────────────────────────────
 // Returns the expo-notifications module or null if unavailable (Expo Go SDK 53+).
@@ -86,7 +87,7 @@ async function ensureChannel(): Promise<void> {
       name: 'Reminders',
       importance: n.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#D9FF3F',
+      lightColor: Colors.lime,
     });
   } catch (error) {
     await setCapabilityStatus('unsupported');

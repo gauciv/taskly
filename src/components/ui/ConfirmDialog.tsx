@@ -17,7 +17,7 @@ import Animated, {
 import { Feather } from '@expo/vector-icons';
 import { haptic } from '@/utils/feedback';
 import { create } from 'zustand';
-import { Colors, Spacing, Radii, SpringConfig, tintedFill } from '@/theme/tokens';
+import { Colors, Spacing, Radii, SpringConfig, tintedFill, withAlpha } from '@/theme/tokens';
 import { AppText } from './AppText';
 import { Button } from './Button';
 
@@ -162,7 +162,7 @@ export function ConfirmHost() {
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: withAlpha(Colors.bg, 0.6),
   },
   centerer: {
     flex: 1,
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     gap: Spacing.s3,
     borderWidth: 1,
     borderColor: Colors.border,
-    shadowColor: '#000',
+    shadowColor: Colors.bg,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.4,
     shadowRadius: 24,

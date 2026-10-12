@@ -7,11 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "taskly",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "backgroundColor": "#08080A",
-      "image": "./assets/images/splash-icon.png",
-      "imageWidth": 76
-    },
     "ios": {
       "bundleIdentifier": "com.taskly.app",
       "icon": "./assets/expo.icon"

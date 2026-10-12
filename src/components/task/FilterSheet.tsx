@@ -14,7 +14,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Spacing } from '@/theme/tokens';
+import { Colors, Spacing, withAlpha } from '@/theme/tokens';
 import { AppText } from '@/components/ui/AppText';
 import { Chip } from '@/components/ui/Chip';
 import { Button } from '@/components/ui/Button';
@@ -175,7 +175,7 @@ export function FilterSheet({
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: withAlpha(Colors.bg, 0.6),
   },
   sheet: {
     position: 'absolute',

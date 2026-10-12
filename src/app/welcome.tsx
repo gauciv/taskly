@@ -15,6 +15,7 @@ import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
 import { NotchCard } from '@/components/ui/NotchCard';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { tabsHref } from '@/utils/routes';
 
 const CARDS = [
   { color: Colors.cyan,   icon: 'check-square' as const, rotate: '15deg',  tx: 40,   ty: -40 },
@@ -33,7 +34,7 @@ export default function WelcomeScreen() {
       haptic.success();
       await setUserName(name.trim() || 'Friend');
       await setOnboarded();
-      router.replace('/(tabs)');
+      router.replace(tabsHref);
     } finally {
       setLoading(false);
     }

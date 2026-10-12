@@ -28,7 +28,7 @@ import {
   selectWeeklyActivity,
   selectStreak,
 } from '@/store/selectors';
-import { taskDetailsHref, notificationsHref } from '@/utils/routes';
+import { taskDetailsHref, notificationsHref, tasksHref, tasksByCategoryHref } from '@/utils/routes';
 import { usePullRefresh } from '@/hooks/usePullRefresh';
 import type { Category } from '@/types';
 import { startOfDay } from 'date-fns';
@@ -127,7 +127,7 @@ export default function HomeScreen() {
           <Animated.View entering={FadeInDown.delay(120).duration(220)} style={styles.section}>
             <SectionHeader
               title="Recent Activity"
-              onSeeMore={() => router.push('/(tabs)/tasks')}
+              onSeeMore={() => router.push(tasksHref)}
             />
             <ScrollView
               horizontal
@@ -141,7 +141,7 @@ export default function HomeScreen() {
                 >
                   <Pressable
                     onPress={() =>
-                      router.push({ pathname: '/(tabs)/tasks', params: { category: String(item.category.id) } })
+                      router.push(tasksByCategoryHref(item.category.id))
                     }
                     accessibilityLabel={`${item.category.name}: ${item.count} open task${item.count !== 1 ? 's' : ''}`}
                     style={({ pressed }) => [styles.compactCard, { opacity: pressed ? 0.8 : 1 }]}
@@ -161,7 +161,7 @@ export default function HomeScreen() {
         <Animated.View entering={FadeInDown.delay(180).duration(220)} style={[styles.section, todaySlice.length === 0 && styles.emptyTaskSection]}>
           <SectionHeader
             title="Tasks Today!"
-            onSeeMore={() => router.push('/(tabs)/tasks')}
+            onSeeMore={() => router.push(tasksHref)}
           />
           {todaySlice.length === 0 ? (
             <EmptyState

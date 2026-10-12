@@ -16,7 +16,7 @@ import { haptic } from '@/utils/feedback';
 
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
 
-const COLOR_SWATCHES = ['#8B7CFF', '#D9FF3F', '#29C7E8', '#FF7AA8', '#FF9F6B', '#5BD98C'];
+const COLOR_SWATCHES = [Colors.purple, Colors.lime, Colors.cyan, Colors.pink, Colors.orange, Colors.success];
 
 interface CategoryPickerProps {
   selectedId: number | null;

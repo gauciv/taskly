@@ -1,11 +1,12 @@
 import { getDb } from './client';
+import { Colors } from '@/theme/tokens';
 
 const SEED_CATEGORIES = [
-  { name: 'Work',     color: '#8B7CFF', icon: 'briefcase' },
-  { name: 'Personal', color: '#D9FF3F', icon: 'user' },
-  { name: 'Study',    color: '#29C7E8', icon: 'book-open' },
-  { name: 'Health',   color: '#FF7AA8', icon: 'heart' },
-  { name: 'Shopping', color: '#FF9F6B', icon: 'shopping-bag' },
+  { name: 'Work',     color: Colors.purple, icon: 'briefcase' },
+  { name: 'Personal', color: Colors.lime, icon: 'user' },
+  { name: 'Study',    color: Colors.cyan, icon: 'book-open' },
+  { name: 'Health',   color: Colors.pink, icon: 'heart' },
+  { name: 'Shopping', color: Colors.orange, icon: 'shopping-bag' },
 ];
 
 export async function runMigrations(): Promise<void> {
