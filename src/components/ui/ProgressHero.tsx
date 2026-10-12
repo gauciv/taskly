@@ -1,14 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, StyleSheet, Pressable, LayoutChangeEvent } from 'react-native';
+import Svg, { Circle, Line } from 'react-native-svg';
+import { LineChart, type lineDataItem } from 'react-native-gifted-charts';
 import Animated, {
   Easing,
   FadeIn,
   useAnimatedProps,
-  useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
-  withDelay,
   withTiming,
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
@@ -17,14 +16,14 @@ import { Colors, Radii, Spacing, Typography } from '@/theme/tokens';
 import { AppText } from './AppText';
 import type { WeeklyActivity, StreakResult } from '@/store/selectors';
 import { achievementsHref } from '@/utils/routes';
+import { useMotionPrefs } from '@/hooks/useMotionPrefs';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-const RING_SIZE = 84;
-const RING_STROKE = 8;
-const RING_RADIUS = 38;
+const RING_SIZE = 72;
+const RING_STROKE = 7;
+const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
-const CHART_HEIGHT = 56;
-const MIN_BAR_HEIGHT = 4;
+const CHART_HEIGHT = 72;
 
 function ProgressRing({ done, total, reduceMotion }: { done: number; total: number; reduceMotion: boolean }) {
   const progress = useSharedValue(0);
@@ -46,12 +45,12 @@ function ProgressRing({ done, total, reduceMotion }: { done: number; total: numb
 
   return (
     <View style={styles.ringBox}>
-      <Svg width={RING_SIZE} height={RING_SIZE} viewBox="0 0 84 84">
-        <Circle cx={42} cy={42} r={RING_RADIUS} stroke={Colors.purple + '40'} strokeWidth={RING_STROKE} fill="none" />
+      <Svg width={RING_SIZE} height={RING_SIZE} viewBox="0 0 72 72">
+        <Circle cx={36} cy={36} r={RING_RADIUS} stroke={Colors.purple + '40'} strokeWidth={RING_STROKE} fill="none" />
         {!freeDay && (
           <AnimatedCircle
-            cx={42}
-            cy={42}
+            cx={36}
+            cy={36}
             r={RING_RADIUS}
             stroke={ringColor}
             strokeWidth={RING_STROKE}
@@ -60,7 +59,7 @@ function ProgressRing({ done, total, reduceMotion }: { done: number; total: numb
             animatedProps={ringProps}
             strokeLinecap="round"
             rotation="-90"
-            origin="42, 42"
+            origin="36, 36"
           />
         )}
       </Svg>
@@ -68,52 +67,12 @@ function ProgressRing({ done, total, reduceMotion }: { done: number; total: numb
         {freeDay ? (
           <AppText variant="label" color={Colors.textFaint}>–</AppText>
         ) : allDone ? (
-          <Feather name="check" size={28} color={Colors.success} />
+          <Feather name="check" size={26} color={Colors.success} />
         ) : (
           <AppText variant="title" color={Colors.text} style={styles.ringText}>{done}/{total}</AppText>
         )}
       </View>
     </View>
-  );
-}
-
-function MiniBar({
-  count,
-  maxCount,
-  isToday,
-  index,
-  label,
-  reduceMotion,
-  selected,
-  onPress,
-}: {
-  count: number;
-  maxCount: number;
-  isToday: boolean;
-  index: number;
-  label: string;
-  reduceMotion: boolean;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  const progress = useSharedValue(0);
-  const max = Math.max(maxCount, 3);
-  const barHeight = count === 0 ? MIN_BAR_HEIGHT : Math.max(MIN_BAR_HEIGHT + 2, Math.round((count / max) * CHART_HEIGHT));
-
-  useEffect(() => {
-    progress.value = reduceMotion
-      ? 1
-      : withDelay(index * 40, withTiming(1, { duration: 450, easing: Easing.out(Easing.cubic) }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [barHeight, reduceMotion]);
-
-  const barStyle = useAnimatedStyle(() => ({ height: Math.max(1, barHeight * progress.value) }));
-  const color = isToday ? Colors.lime : selected ? Colors.purple : Colors.purple + '73';
-
-  return (
-    <Pressable onPress={onPress} style={styles.barCol} accessibilityLabel={`${label}: ${count} completed`}>
-      <Animated.View style={[styles.bar, barStyle, { backgroundColor: color }]} />
-    </Pressable>
   );
 }
 
@@ -124,8 +83,42 @@ interface Props {
 }
 
 export function ProgressHero({ data, streak, hasTasks }: Props) {
-  const reduceMotion = !!useReducedMotion();
+  const systemReduceMotion = !!useReducedMotion();
+  const { reduceMotion: appReduceMotion } = useMotionPrefs();
+  const reduceMotion = systemReduceMotion || appReduceMotion;
   const [selectedDayIdx, setSelectedDayIdx] = useState<number | null>(null);
+  const [rightWidth, setRightWidth] = useState(0);
+  const handlePointPress = useCallback((_item: lineDataItem, index: number) => {
+    setSelectedDayIdx((current) => current === index ? null : index);
+  }, []);
+
+  const chartData = useMemo<lineDataItem[]>(() => data.days.map((day, index) => ({
+    value: day.count,
+    label: day.label,
+    labelTextStyle: {
+      color: index === data.days.length - 1 ? Colors.lime : Colors.textFaint,
+      fontFamily: 'Poppins_500Medium',
+      fontSize: 10,
+    },
+    hideDataPoint: index !== data.days.length - 1 && index !== selectedDayIdx,
+    dataPointColor: index === data.days.length - 1 ? Colors.lime : Colors.purple + '99',
+    customDataPoint: (point: lineDataItem, pointIndex: number) => {
+      const isToday = pointIndex === data.days.length - 1;
+      const color = isToday ? Colors.lime : Colors.purple + '99';
+      return (
+        <Pressable
+          onPress={() => point.onPress?.(point, pointIndex)}
+          accessibilityRole="button"
+          accessibilityLabel={`${point.label ?? 'Day'}: ${point.value ?? 0} completed`}
+          style={[styles.pointHalo, { backgroundColor: color + '33' }]}
+        >
+          <View style={[styles.pointDot, { backgroundColor: color }]} />
+        </Pressable>
+      );
+    },
+    onPress: (_point: lineDataItem, pointIndex: number) => handlePointPress(_point, pointIndex),
+  })), [data.days, handlePointPress, selectedDayIdx]);
+
   if (!hasTasks) return null;
 
   const maxCount = Math.max(0, ...data.days.map((day) => day.count));
@@ -134,6 +127,14 @@ export function ProgressHero({ data, streak, hasTasks }: Props) {
   const deltaColor = delta > 0 ? Colors.success : delta < 0 ? Colors.danger : Colors.textMuted;
   const selectedDay = selectedDayIdx === null ? null : data.days[selectedDayIdx];
   const weekday = selectedDay ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(selectedDay.dayMs).getDay()] : '';
+  const plotWidth = Math.max(0, rightWidth - 8);
+  const pointSpacing = Math.max(1, (plotWidth - 14) / 6);
+  const countsKey = data.days.map((day) => `${day.dayMs}:${day.count}`).join('|');
+
+  function handleRightLayout(event: LayoutChangeEvent) {
+    const width = event.nativeEvent.layout.width;
+    setRightWidth((current) => current === width ? current : width);
+  }
 
   return (
     <Animated.View entering={FadeIn.duration(200)} style={styles.wrapper}>
@@ -148,7 +149,7 @@ export function ProgressHero({ data, streak, hasTasks }: Props) {
           </AppText>
         </View>
         <View style={styles.divider} />
-        <View style={styles.right}>
+        <View style={styles.right} onLayout={handleRightLayout}>
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
               <AppText variant="caption" color={Colors.textMuted}>This week</AppText>
@@ -169,25 +170,56 @@ export function ProgressHero({ data, streak, hasTasks }: Props) {
               <AppText variant="caption" color={Colors.textMuted}>{selectedDay ? `· ${weekday}` : 'completed'}</AppText>
             </Animated.View>
           </View>
-          <View style={styles.chart}>
-            {data.days.map((day, index) => (
-              <MiniBar
-                  key={day.dayMs}
-                  count={day.count}
-                  maxCount={maxCount}
-                  isToday={index === data.days.length - 1}
-                  index={index}
-                  label={day.label}
-                  reduceMotion={reduceMotion}
-                  selected={selectedDayIdx === index}
-                  onPress={() => setSelectedDayIdx((current) => current === index ? null : index)}
+          <View style={styles.chartContainer}>
+            {rightWidth > 8 && maxCount === 0 ? (
+              <View style={[styles.emptyChart, { width: plotWidth }]}>
+                <Svg width={plotWidth} height={42}>
+                  <Line x1={6} y1={21} x2={Math.max(6, plotWidth - 6)} y2={21} stroke={Colors.border} strokeWidth={1} strokeDasharray="4 4" />
+                </Svg>
+                <AppText variant="caption" color={Colors.textMuted} style={styles.trendCaption}>Complete a task to see your trend</AppText>
+              </View>
+            ) : rightWidth > 8 ? (
+              <View style={{ width: plotWidth }}>
+                <LineChart
+                  key={countsKey}
+                  data={chartData}
+                  width={plotWidth}
+                  parentWidth={plotWidth}
+                  height={54}
+                  xAxisLabelsHeight={16}
+                  xAxisLabelTextStyle={styles.xLabel}
+                  xAxisThickness={0}
+                  yAxisThickness={0}
+                  hideAxesAndRules
+                  hideYAxisText
+                  hideOrigin
+                  hideRules
+                  noOfSections={3}
+                  maxValue={Math.max(maxCount, 3)}
+                  initialSpacing={7}
+                  endSpacing={7}
+                  spacing={pointSpacing}
+                  curved
+                  areaChart
+                  color={Colors.lime}
+                  thickness={3}
+                  startFillColor={Colors.lime}
+                  endFillColor={Colors.lime}
+                  startOpacity={0.35}
+                  endOpacity={0}
+                  gradientDirection="vertical"
+                  isAnimated={!reduceMotion}
+                  animateOnDataChange={false}
+                  animationDuration={600}
+                  dataPointsColor={Colors.lime}
+                  dataPointsRadius={5}
+                  dataPointsWidth={14}
+                  dataPointsHeight={14}
+                  disableScroll
+                  onBackgroundPress={() => setSelectedDayIdx(null)}
                 />
-            ))}
-          </View>
-          <View style={styles.labelsRow}>
-            {data.days.map((day) => (
-              <AppText key={`label-${day.dayMs}`} variant="caption" color={Colors.textFaint} style={styles.barLabel}>{day.label}</AppText>
-            ))}
+              </View>
+            ) : null}
           </View>
         </View>
       </View>
@@ -219,12 +251,13 @@ const styles = StyleSheet.create({
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.s2, minWidth: 0 },
   deltaPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: Radii.chip },
   streakPill: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: Colors.lime + '18', paddingHorizontal: 7, paddingVertical: 3, borderRadius: Radii.chip },
-  headlineRow: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.s2 },
-  bigNum: { ...Typography.h1, fontSize: 32, lineHeight: 38 },
-  chart: { height: CHART_HEIGHT, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 6 },
-  barCol: { flex: 1, height: CHART_HEIGHT, maxWidth: 20, justifyContent: 'flex-end', alignItems: 'center' },
-  bar: { width: '100%', minHeight: MIN_BAR_HEIGHT, borderRadius: 8 },
-  labelsRow: { flexDirection: 'row', gap: 6 },
-  barLabel: { flex: 1, textAlign: 'center', fontSize: 10, lineHeight: 14, fontWeight: '500' },
+  headlineRow: { flexDirection: 'row', alignItems: 'baseline' },
   headlineInner: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.s2 },
+  bigNum: { ...Typography.h1, fontSize: 32, lineHeight: 38 },
+  chartContainer: { height: CHART_HEIGHT, overflow: 'hidden', justifyContent: 'center' },
+  emptyChart: { height: CHART_HEIGHT, alignItems: 'center', justifyContent: 'center' },
+  trendCaption: { textAlign: 'center', marginTop: 2 },
+  pointHalo: { width: 14, height: 14, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
+  pointDot: { width: 10, height: 10, borderRadius: 5 },
+  xLabel: { color: Colors.textFaint, fontFamily: 'Poppins_500Medium', fontSize: 10, lineHeight: 14 },
 });

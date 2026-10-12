@@ -6,7 +6,7 @@ A polished dark-themed To-Do List mobile app built with React Native, Expo, and 
 
 | Code | Feature | Where |
 |------|---------|-------|
-| R1 | Add task | Center "+" in the tab bar; contextual "Add task" buttons on empty states |
+| R1 | Add task | Raised center "+" in the tab bar |
 | R2 | Display tasks | Home (today & overdue), Tasks tab (all, sectioned), Schedule (by day/time) |
 | R3 | Mark completed | Animated checkbox on every task card — tap to toggle, persists across restarts |
 | R4 | Task Details | Tap any task card → read-only details screen with full info grid and notes |
@@ -18,12 +18,16 @@ A polished dark-themed To-Do List mobile app built with React Native, Expo, and 
 | E3 | Search | Instant search by title, notes, or category name (150 ms debounce) in Tasks tab |
 | E4 | Notifications | Local scheduled reminders; configurable offset (at due time / 10 min / 1 hour before); in-app notification center with inbox, upcoming reminders, and swipe-to-dismiss |
 | E5 | Priority | Low / Medium / High; shown on cards; default sort puts high-priority first |
-| E6 | Weekly Activity | Bar chart + progress ring on Home showing completed tasks over the last 7 days |
+| E6 | Weekly Activity | Gradient area line chart + progress ring on Home showing completed tasks over the last 7 days |
 | E7 | Pull-to-refresh | Available on Home, Tasks, Schedule, and Notifications screens |
 | E8 | Styled dialogs | Custom confirmation dialog (spring animation, warning haptic) for all destructive actions |
 | E9 | Rewards | Completion celebrations, streak tracking, and six unlockable achievements |
 | E10 | Feedback settings | Celebration and haptic toggles, with reduced-motion support |
 | E11 | Error recovery | Visible error toasts with retry actions, form validation, and startup recovery screen |
+
+## Tech stack
+
+React Native, Expo, TypeScript, SQLite, Zustand, Reanimated, `react-native-svg`, `expo-linear-gradient`, and `react-native-gifted-charts` for the Home area chart.
 
 ## How to run
 

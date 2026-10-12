@@ -78,12 +78,13 @@ Last updated: 2026-10-11
 
 ## Fix 5
 - [x] U5.1  Add-task buttons removed from empty states, copy updated, EmptyState centered
-- [ ] U5.2  Home chart rebuilt (gifted-charts area line, or SVG fallback), ring tweak
+- [x] U5.2  Home chart rebuilt (gifted-charts area line, or SVG fallback), ring tweak
 - [ ] U5.3  Final QA, grep checks, README, commit
 
 ## Decisions
 - Fix 5: use `react-native-gifted-charts` for the Home area chart if installed version supports Expo Go gradients and the requested point interactions; otherwise use the specified SVG fallback.
 - U5.1: the Home zero-task state uses the same “No tasks yet” copy as Tasks; Schedule's selected day is accessed through the raised tab-bar +, so the empty state has no separate task-creation action.
+- U5.2 dependency decision: installed gifted-charts 1.4.81; peer dependencies list React, React Native, `react-native-svg`, and optional `expo-linear-gradient`/`react-native-linear-gradient`. The project's existing Expo Go dependencies include `react-native-svg` and `expo-linear-gradient`; no native gradient module was added. The chart renders area gradients with its SVG gradient implementation.
 
 ## Known issues
 (non-blocking bugs or warnings)
