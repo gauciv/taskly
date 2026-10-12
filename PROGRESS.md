@@ -139,7 +139,7 @@ Last updated: 2026-10-12
 - [x] U10.1  analyze-failure.sh + fixtures + test-analyzer.sh passing
 - [x] U10.2  node-shim.sh tested locally (stdout, exit code, stderr capture, stdin)
 - [x] U10.3  preflight.sh with probes P1–P12 (never fails the job)
-- [ ] U10.4  gradle-build.sh: retries, failure pipeline, REPORT.md
+- [x] U10.4  gradle-build.sh: retries, failure pipeline, REPORT.md
 - [ ] U10.5  Workflow integration, YAML/bash validation, README "Debugging the release build"
 - [ ] U10.6  Final QA and report
 
@@ -149,3 +149,4 @@ Last updated: 2026-10-12
 - U10.1: added all 16 requested signature rules and realistic fixtures, including the observed hidden Node exit and Foojay DNS failure. `test-analyzer.sh` passes 16/16; it captures analyzer output before searching so test consumers do not close the evidence pipe early.
 - U10.2: the generated PATH wrapper delegates stdout/stdin directly, captures and replays stderr, logs escaped argv/cwd/exit, and records up to 4000 stderr bytes for failures. Local checks passed `node --print`, exact exit 3 + stderr, and stdin piping; test diagnostics were removed.
 - U10.3: added isolated P1–P12 captures, concise bounded Actions summary rows, full preflight markdown, P8's last 80 lines, Node resolution checks from both project and Android cwd, network endpoints, and a case-sensitive import scanner. `bash -n`, the scanner (0 mismatches), and `PREFLIGHT_DRY=1` pass without running Gradle or network probes. The observed log is classified as NETWORK only, not the broad dependency-resolution signature.
+- U10.4: added the assembleRelease wrapper with 20/40-second retry waits only when NETWORK matches, optional debug/--info mode, shimmed config-only and task-only reruns, evidence/config snapshots, and the ordered REPORT.md sections. `bash -n` and analyzer fixtures pass. Per Fix 10, no Gradle command was run locally; runtime behavior is exercised in Actions.
