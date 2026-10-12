@@ -8,10 +8,10 @@ A polished dark-themed To-Do List mobile app built with React Native, Expo, and 
 |------|---------|-------|
 | R1 | Add task | Raised center "+" in the tab bar |
 | R2 | Display tasks | Home (today & overdue), Tasks tab (all, sectioned), Schedule (by day/time) |
-| R3 | Mark completed | Animated checkbox on every task card — tap to toggle, persists across restarts |
-| R4 | Task Details | Tap any task card → read-only details screen with full info grid and notes |
+| R3 | Mark completed | Animated checkbox on every task card — tap for immediate feedback; completion persists across restarts |
+| R4 | Task Details | Tap a task card for due status, priority, category, reminder, notes, activity, and sticky completion/delete actions |
 | R5 | Edit task | Edit button on the details screen → edit form — all fields editable |
-| R6 | Delete task | Swipe-left on a card, or Delete button on details/edit screens — confirm dialog + undo toast |
+| R6 | Delete task | Swipe-left on a card, or delete from details/edit — confirm dialog, immediate exit, and undo toast |
 | R7 | Local storage | expo-sqlite; all data survives app kills and restarts |
 | E1 | Categories | 5 seeded categories; create custom ones inline in the task form; filter in Tasks tab |
 | E2 | Due dates | Date + optional time; overdue highlighted in red; Schedule tab shows a weekly timeline |

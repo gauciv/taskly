@@ -6,16 +6,43 @@
  * lazily and fall back to no-ops when it is unavailable.
  */
 
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import { Task } from '@/types';
 import { getSetting, setSetting } from '@/db/settingsRepo';
 import { formatDueLabel } from '@/utils/date';
-import { logError } from '@/utils/logger';
+import { logError, logInfo } from '@/utils/logger';
+import { reportError } from '@/utils/errors';
+import { showToast } from '@/components/ui/Toast';
 
 // ── Lazy loader ───────────────────────────────────────────────────────────────
 // Returns the expo-notifications module or null if unavailable (Expo Go SDK 53+).
 type ExpoNotifications = typeof import('expo-notifications');
 let _notif: ExpoNotifications | null | 'unloaded' = 'unloaded';
+let permissionToastShown = false;
+let unsupportedToastShown = false;
+
+async function setCapabilityStatus(reason: 'permission_denied' | 'unsupported' | null): Promise<void> {
+  const { useNotificationStatus } = await import('@/store/useNotificationStatus');
+  useNotificationStatus.getState().setStatus(reason);
+  if (reason === 'permission_denied' && !permissionToastShown) {
+    permissionToastShown = true;
+    showToast('Notification permission is off', {
+      type: 'warning',
+      action: {
+        label: 'Open settings',
+        onPress: () => {
+          void Linking.openSettings().catch((error: unknown) => reportError(error, {
+            context: 'notifications.openSettings',
+            userMessage: "Couldn't open system settings",
+          }));
+        },
+      },
+    });
+  } else if (reason === 'unsupported' && !unsupportedToastShown) {
+    unsupportedToastShown = true;
+    showToast("Reminders can't be scheduled on this device or app build", { type: 'info' });
+  }
+}
 
 function getNotif(): ExpoNotifications | null {
   if (_notif !== 'unloaded') return _notif;
@@ -26,6 +53,7 @@ function getNotif(): ExpoNotifications | null {
     _notif = mod;
   } catch {
     // Expected in Expo Go builds where expo-notifications is unavailable.
+    logInfo('notifications.loadModule', 'expo-notifications is unavailable in this app build');
     _notif = null;
   }
   return _notif;
@@ -61,6 +89,7 @@ async function ensureChannel(): Promise<void> {
       lightColor: '#D9FF3F',
     });
   } catch (error) {
+    await setCapabilityStatus('unsupported');
     logError('notifications.ensureChannel', error);
   }
 }
@@ -71,36 +100,22 @@ export async function ensurePermission(): Promise<boolean> {
     const n = getNotif();
     if (!n) {
       // Module unavailable → unsupported (Expo Go)
-      const { useNotificationStatus } = await import('@/store/useNotificationStatus');
-      useNotificationStatus.getState().setStatus('unsupported');
+      await setCapabilityStatus('unsupported');
       return false;
     }
     const asked = await getSetting('notif_asked');
     if (asked === '1') {
       const { status } = await n.getPermissionsAsync();
-      if (status !== 'granted') {
-        const { useNotificationStatus } = await import('@/store/useNotificationStatus');
-        useNotificationStatus.getState().setStatus('permission_denied');
-      } else {
-        const { useNotificationStatus } = await import('@/store/useNotificationStatus');
-        useNotificationStatus.getState().setStatus(null);
-      }
+      await setCapabilityStatus(status === 'granted' ? null : 'permission_denied');
       return status === 'granted';
     }
     await setSetting('notif_asked', '1');
     const { status } = await n.requestPermissionsAsync();
-    if (status !== 'granted') {
-      const { useNotificationStatus } = await import('@/store/useNotificationStatus');
-      useNotificationStatus.getState().setStatus('permission_denied');
-    } else {
-      const { useNotificationStatus } = await import('@/store/useNotificationStatus');
-      useNotificationStatus.getState().setStatus(null);
-    }
+    await setCapabilityStatus(status === 'granted' ? null : 'permission_denied');
     return status === 'granted';
   } catch (error) {
+    await setCapabilityStatus('unsupported');
     logError('notifications.ensurePermission', error);
-    const { useNotificationStatus } = await import('@/store/useNotificationStatus');
-    useNotificationStatus.getState().setStatus('unsupported');
     return false;
   }
 }
@@ -126,8 +141,7 @@ export async function syncTaskNotification(task: Task): Promise<void> {
   try {
     const n = getNotif();
     if (!n) {
-      const { useNotificationStatus } = await import('@/store/useNotificationStatus');
-      useNotificationStatus.getState().setStatus('unsupported');
+      await setCapabilityStatus('unsupported');
       return;
     }
     const enabled = (await getSetting('notifications_enabled')) !== '0';
@@ -140,7 +154,7 @@ export async function syncTaskNotification(task: Task): Promise<void> {
     await ensureChannel();
     if (task.notificationId) {
       await n.cancelScheduledNotificationAsync(task.notificationId).catch((error) => {
-        logError('notifications.replaceSchedule.cancel', error);
+        reportError(error, { context: 'notifications.replaceSchedule.cancel', userMessage: 'The previous reminder could not be replaced' });
       });
     }
     const fireDate = await getFireTime(task);
@@ -162,9 +176,8 @@ export async function syncTaskNotification(task: Task): Promise<void> {
     const { updateTask } = await import('@/db/tasksRepo');
     await updateTask(task.id, { notificationId: `task-${task.id}` });
   } catch (error) {
+    await setCapabilityStatus('unsupported');
     logError('notifications.syncTask', error);
-    const { useNotificationStatus } = await import('@/store/useNotificationStatus');
-    useNotificationStatus.getState().setStatus('unsupported');
   }
 }
 
@@ -176,17 +189,20 @@ export async function cancelTaskNotification(
     if (!n) return;
     const id = task.notificationId ?? `task-${task.id}`;
     await n.cancelScheduledNotificationAsync(id).catch((error) => {
-      logError('notifications.cancelTask', error);
+      reportError(error, { context: 'notifications.cancelTask', userMessage: "Couldn't cancel this reminder", retry: () => { void cancelTaskNotification(task); } });
     });
   } catch (error) {
-    logError('notifications.cancelTask', error);
+    reportError(error, { context: 'notifications.cancelTask', userMessage: "Couldn't cancel this reminder", retry: () => { void cancelTaskNotification(task); } });
   }
 }
 
 export async function resyncAll(tasks: Task[]): Promise<void> {
   try {
     const n = getNotif();
-    if (!n) return;
+    if (!n) {
+      await setCapabilityStatus('unsupported');
+      return;
+    }
     await n.cancelAllScheduledNotificationsAsync();
     const enabled = (await getSetting('notifications_enabled')) !== '0';
     if (!enabled) return;
@@ -196,7 +212,7 @@ export async function resyncAll(tasks: Task[]): Promise<void> {
       }
     }
   } catch (error) {
-    logError('notifications.resyncAll', error);
+    reportError(error, { context: 'notifications.resyncAll', userMessage: "Couldn't refresh reminders", retry: () => { void resyncAll(tasks); } });
   }
 }
 
@@ -212,7 +228,8 @@ export function addNotificationTapListener(
       if (typeof data?.taskId === 'number') onTap(data.taskId);
     });
     return () => sub.remove();
-  } catch {
+  } catch (error) {
+    reportError(error, { context: 'notifications.addTapListener', userMessage: 'Notification actions are unavailable' });
     return () => {};
   }
 }
@@ -229,6 +246,6 @@ export async function checkLastNotificationResponse(
       if (typeof data?.taskId === 'number') onTap(data.taskId);
     }
   } catch (error) {
-    logError('notifications.checkLastResponse', error);
+    reportError(error, { context: 'notifications.checkLastResponse', userMessage: "Couldn't open the selected notification" });
   }
 }

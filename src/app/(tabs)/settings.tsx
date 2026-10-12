@@ -34,6 +34,7 @@ import { cancelTaskNotification, ensurePermission } from '@/services/notificatio
 import { useNotificationStatus } from '@/store/useNotificationStatus';
 import { haptic } from '@/utils/feedback';
 import { achievementsHref } from '@/utils/routes';
+import { reportError } from '@/utils/errors';
 
 // ── Animated Toggle Switch ────────────────────────────────────────────────────
 interface ToggleSwitchProps {
@@ -170,7 +171,12 @@ function NotifCapabilityBanner() {
       </AppText>
       {isPermission && (
         <TouchableOpacity
-          onPress={() => Linking.openSettings()}
+          onPress={() => {
+            void Linking.openSettings().catch((error: unknown) => reportError(error, {
+              context: 'settings.openNotificationSettings',
+              userMessage: "Couldn't open system settings",
+            }));
+          }}
           accessibilityLabel="Open system settings"
           accessibilityRole="button"
         >
@@ -244,11 +250,6 @@ export default function SettingsScreen() {
         await setNotificationsEnabled(false);
         remindersShakeRef.current();
         haptic.warning();
-        // Toast is shown by ensurePermission via useNotificationStatus; add a warning here too
-        showToast('Notification permission required', {
-          type: 'warning',
-          action: { label: 'Settings', onPress: () => Linking.openSettings() },
-        });
       }
     } else {
       await setNotificationsEnabled(false);

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { getAllSettings, setSetting } from '@/db/settingsRepo';
 import { resyncAll } from '@/services/notifications';
 import { useTaskStore } from './useTaskStore';
-import { logError } from '@/utils/logger';
+import { reportError } from '@/utils/errors';
 
 interface SettingsStore {
   userName: string;
@@ -44,7 +44,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     try {
       achievements = JSON.parse(settings['achievements'] ?? '{}') as Record<string, number>;
     } catch (error) {
-      logError('settings.parseAchievements', error);
+      reportError(error, { context: 'settings.parseAchievements', userMessage: 'Saved reward data could not be read' });
     }
     set({
       userName: settings['user_name'] ?? 'Friend',
@@ -71,9 +71,9 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         for (const id of newlyUnlocked) {
           await get().unlockAchievement(id); // persist silently
         }
-      } catch {
-        // Keep hydration available while recording the background unlock failure.
-        logError('settings.hydrateAchievements', 'Achievement evaluation failed');
+      } catch (error) {
+        // Hydration remains available, with visible feedback for the background reward failure.
+        reportError(error, { context: 'settings.hydrateAchievements', userMessage: 'Reward progress could not be refreshed' });
       }
     });
   },

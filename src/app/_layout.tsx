@@ -22,6 +22,7 @@ import {
 } from '@/services/notifications';
 import { taskDetailsHref } from '@/utils/routes';
 import { logError, logInfo } from '@/utils/logger';
+import { reportError } from '@/utils/errors';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -74,7 +75,7 @@ export default function RootLayout() {
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        syncInbox(Date.now()).catch((error) => logError('RootLayout.foregroundSync', error));
+        syncInbox(Date.now()).catch((error) => reportError(error, { context: 'RootLayout.foregroundSync', userMessage: 'Notifications could not be refreshed' }));
       }
     });
     return () => sub.remove();
@@ -84,7 +85,7 @@ export default function RootLayout() {
   useEffect(() => {
     const id = setInterval(() => {
       if (AppState.currentState === 'active') {
-        syncInbox(Date.now()).catch((error) => logError('RootLayout.intervalSync', error));
+        syncInbox(Date.now()).catch((error) => reportError(error, { context: 'RootLayout.intervalSync', userMessage: 'Notifications could not be refreshed' }));
       }
     }, 30_000);
     return () => clearInterval(id);
@@ -125,7 +126,7 @@ export default function RootLayout() {
         await db.execAsync('DROP TABLE IF EXISTS notifications');
         await db.execAsync('DROP TABLE IF EXISTS settings');
       } catch (error) {
-        logError('RootLayout.resetDatabase', error);
+        reportError(error, { context: 'RootLayout.resetDatabase', userMessage: "Couldn't reset app data" });
       }
       init();
     }
