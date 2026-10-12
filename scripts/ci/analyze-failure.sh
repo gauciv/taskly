@@ -8,10 +8,13 @@ if [[ -z "$logfile" || ! -f "$logfile" ]]; then
 fi
 
 matched=0
+network_matched=0
 emit_hint() {
   local code="$1" regex="$2" explanation="$3"
+  if [[ "$code" == DEP_RESOLVE && "$network_matched" -eq 1 ]]; then return; fi
   if grep -Eq "$regex" "$logfile"; then
     matched=1
+    if [[ "$code" == NETWORK ]]; then network_matched=1; fi
     printf 'HINT %s: %s\n' "$code" "$explanation"
     grep -E "$regex" "$logfile" | sed -n '1,3{s/^/EVIDENCE /;p;}'
   fi
