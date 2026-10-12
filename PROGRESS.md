@@ -66,13 +66,14 @@ Last updated: 2026-10-11
 ## Fix 4
 - [x] U4.1  Hero card rebuilt with in-flow flex structure (root cause logged)
 - [x] U4.2  Audit of other U3 components for collapse/overlap
-- [ ] U4.3  Idle animations removed; EmptyState static, centered, full button label
+- [x] U4.3  Idle animations removed; EmptyState static, centered, full button label
 - [ ] U4.4  Final QA, grep checks, commit
 
 ## Decisions
 - Fix 4 supersedes UI Update 3 §6 item 9 (floating empty-state icons) and the bell-wiggle in §6 item 5: the app has NO idle or looping decorative animations.
 - U4.1 root cause: the hero's auto-height card contained a `flex: 1` row and a `flex: 1` right column while only a `maxHeight` constrained it, creating a cyclic height measurement in the Home ScrollView; the chart also combined its bars and labels inside a fixed-height plot. The replacement uses in-flow rows, an uncapped card with `minHeight`, and separate fixed-height plot/label rows.
 - U4.2 layout audit: achievements summary/badges and Settings/Notifications sections remain in normal flow; fixed 100% heights are confined to progress fills inside fixed tracks. Celebration and toast absolute positioning is intentional full-screen/anchored overlay behavior. Toast bottom offset (TabBar height + 48) clears the tab bar and raised add control.
+- U4.3: EmptyState is static across all routes; the only former `withRepeat` usage was its decorative float. Every remaining `withSequence` is a finite interaction response (field/button/card shake, press/checkbox feedback, or toast error shake).
 
 ## Known issues
 (non-blocking bugs or warnings)
