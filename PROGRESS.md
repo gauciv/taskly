@@ -106,6 +106,7 @@ Last updated: 2026-10-12
 
 ## Known issues
 - Android export succeeds. The runner emits a Node `NO_COLOR` ignored because `FORCE_COLOR` is set notice; it does not affect the app bundle.
+- Android prebuild succeeds and creates `android/app/debug.keystore`, with Expo's non-blocking notice that `expo-system-ui` is not installed for the configured `userInterfaceStyle`; the app's screens use their own dark theme.
 
 ## Blockers
 (anything that stopped progress; empty if none)
@@ -124,8 +125,10 @@ Last updated: 2026-10-12
 
 ## Final 2
 - [x] U8.1  Generated avatars (DiceBear or fallback), Avatar component, picker sheet, welcome preview, initials removed
-- [ ] U8.2  release-apk.yml (gate: major/minor change only), .gitignore, lockfile, prebuild + YAML + gate validation
+- [x] U8.2  release-apk.yml (gate: major/minor change only), .gitignore, lockfile, prebuild + YAML + gate validation
 - [ ] U8.3  README (avatars credit + Releasing), final QA, Status: COMPLETE, final commit (no tag, no push)
 
 ## Decisions
 - U8.1: use DiceBear Lorelei (`@dicebear/core` and `@dicebear/lorelei`, both MIT package licenses; Lorelei artwork is CC0 1.0). Avatar SVG is generated on-device from the seed and cached in memory; no network requests or attribution requirement.
+- U8.2: GitHub Actions uses the immediately preceding plain semantic-version tag (version-sorted) as the comparison baseline; it builds only when the major/minor pair changes. Manual dispatch builds an artifact without publishing a release. Android native files are generated per CI run and remain ignored locally.
+- U8.2 validation: workflow YAML parsed; gate simulation passed first-release, major/minor, patch-only, and higher-patch cases. CI-mode Android prebuild completed and generated the standard debug keystore; the generated `android/` directory was removed. `package-lock.json` and `package.json` dependency sets match.

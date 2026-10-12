@@ -1,0 +1,117 @@
+name: Release APK
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: Major/minor release?
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.check.outputs.build }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: check
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then
+            VERSION=$(jq -r '.expo.version' app.json)
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+            echo "Manual run: building ${VERSION}, no release will be published." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          CUR="${GITHUB_REF_NAME#v}"
+          PREV=$( (git tag --list | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true) \
+            | sed 's/^v//' | sort -V \
+            | awk -v cur="$CUR" '$0==cur{exit} {prev=$0} END{print prev}')
+          echo "version=${CUR}" >> "$GITHUB_OUTPUT"
+          if [ -z "${PREV}" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "First release tag (${CUR}): building." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${CUR%.*}" != "${PREV%.*}" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "${PREV} -> ${CUR}: major/minor changed, building." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "${PREV} -> ${CUR}: patch-only change, skipping the build." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  build:
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install dependencies
+        run: npm ci
+      - name: Set app version from the tag
+        env:
+          VERSION: ${{ needs.gate.outputs.version }}
+        run: |
+          IFS=. read -r MA MI PA <<< "${VERSION%%-*}"
+          CODE=$(( MA * 10000 + MI * 100 + PA ))
+          jq --arg v "$VERSION" --argjson c "$CODE" \
+            '.expo.version=$v | .expo.android.versionCode=$c' app.json > app.tmp && mv app.tmp app.json
+      - name: Generate the native Android project
+        run: npx expo prebuild --platform android --clean --no-install
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - name: Configure Gradle memory
+        run: echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" >> android/gradle.properties
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build release APK
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,x86_64
+      - name: Rename and checksum the APK
+        env:
+          VERSION: ${{ needs.gate.outputs.version }}
+        run: |
+          APK=$(find android/app/build/outputs -type f -name '*.apk' | head -n 1)
+          test -n "$APK"
+          cp "$APK" "Taskly-v${VERSION}.apk"
+          sha256sum "Taskly-v${VERSION}.apk" > "Taskly-v${VERSION}.apk.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Taskly-APK
+          path: |
+            Taskly-v*.apk
+            Taskly-v*.apk.sha256
+      - name: Publish GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Taskly-v*.apk
+            Taskly-v*.apk.sha256
+          generate_release_notes: true
+          body: |
+            ## Install on Android
+            1. Download the `.apk` below on your phone.
+            2. Open it and allow "Install unknown apps" for your browser/files app if asked.
+            3. Open **Taskly**.
+
+            Built for 64-bit Android phones (arm64) and x86_64 emulators. Signed with the standard Android debug key (fine for sideloading, not for the Play Store).
