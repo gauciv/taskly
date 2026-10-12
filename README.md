@@ -1,33 +1,41 @@
 # Taskly
 
-A polished dark-themed To-Do List mobile app built with React Native, Expo, and SQLite — a Mobile Application Development mini project.
+Taskly is a dark, mobile task planner built for a Mobile Application Development project. It supports the complete task workflow, saves data locally with SQLite, and adds categories, scheduling, search, reminders, and priority tools.
 
 ## Features
 
-| Code | Feature | Where |
-|------|---------|-------|
-| R1 | Add task | Raised center "+" in the tab bar |
-| R2 | Display tasks | Home (today & overdue), Tasks tab (all, sectioned), Schedule (by day/time) |
-| R3 | Mark completed | Animated checkbox on every task card — tap for immediate feedback; completion persists across restarts |
-| R4 | Task Details | Tap a task card for due status, priority, category, reminder, notes, activity, and sticky completion/delete actions |
-| R5 | Edit task | Edit button on the details screen → edit form — all fields editable |
-| R6 | Delete task | Swipe-left on a card, or delete from details/edit — confirm dialog, immediate exit, and undo toast |
-| R7 | Local storage | expo-sqlite; all data survives app kills and restarts |
-| E1 | Categories | 5 seeded categories; create custom ones inline in the task form; filter in Tasks tab |
-| E2 | Due dates | Date + optional time; overdue highlighted in red; Schedule tab shows a weekly timeline |
-| E3 | Search | Instant search by title, notes, or category name (150 ms debounce) in Tasks tab |
-| E4 | Notifications | Local scheduled reminders; configurable offset (at due time / 10 min / 1 hour before); in-app notification center with inbox, upcoming reminders, and swipe-to-dismiss |
-| E5 | Priority | Low / Medium / High; shown on cards; default sort puts high-priority first |
-| E6 | Weekly Activity | Gradient area line chart + progress ring on Home showing completed tasks over the last 7 days |
-| E7 | Pull-to-refresh | Available on Home, Tasks, Schedule, and Notifications screens |
-| E8 | Styled dialogs | Custom confirmation dialog (spring animation, warning haptic) for all destructive actions |
-| E9 | Rewards | Completion celebrations, streak tracking, and six unlockable achievements |
-| E10 | Feedback settings | Celebration and haptic toggles, with reduced-motion support |
-| E11 | Error recovery | Visible error toasts with retry actions, form validation, and startup recovery screen |
+### Core requirements
+
+| Requirement | Taskly implementation |
+|---|---|
+| Create | Add tasks from the raised center `+` button on every tab; Schedule pre-fills its selected day. |
+| Read and organize | Home shows today's and overdue tasks; Tasks groups the full list; Schedule shows tasks by day and time. |
+| Update | Edit title, notes, category, priority, due date, and reminder from the task form. |
+| Complete | Toggle completion from a task card or Details; changes save to SQLite and can be undone from feedback. |
+| Delete | Delete from swipe actions, Details, or Edit after confirmation; the toast offers Undo. |
+| Persistence | SQLite stores tasks, categories, settings, and notification history across app restarts. |
+
+### Five enhancements
+
+| Enhancement | Implementation |
+|---|---|
+| Categories | Seeded and custom categories, colored card pills, and category filters. |
+| Due dates and times | All-day or timed tasks, Schedule timeline, and shared today/upcoming/overdue status rules. |
+| Search | Debounced search across task titles, notes, and category names. |
+| Reminders | Local scheduled notifications with configurable offsets and an in-app notification center. |
+| Priority | Low, Medium, and High priorities with labeled card pills, filters, and priority-aware sorting. |
+
+### Extras
+
+- Home progress ring and seven-day gradient activity chart.
+- Streaks, achievements, contextual completion celebrations, and confetti.
+- Feedback settings for celebrations and haptics, with reduced-motion support.
+- Pull-to-refresh, inline form validation, recoverable error toasts, and startup recovery.
+- Empty states, confirmation dialogs, notification unread badge, and undo actions.
 
 ## Tech stack
 
-React Native, Expo, TypeScript, SQLite, Zustand, Reanimated, `react-native-svg`, `expo-linear-gradient`, and `react-native-gifted-charts` for the Home area chart.
+React Native, Expo SDK 57, TypeScript, Expo Router, Expo SQLite, Zustand, Reanimated, Feather icons, `react-native-svg`, `react-native-gifted-charts`, `expo-linear-gradient`, and Poppins.
 
 ## How to run
 
@@ -36,35 +44,47 @@ npm install
 npx expo start
 ```
 
-Scan the QR code with **Expo Go** (iOS or Android). Your phone and computer must be on the same Wi-Fi network. If they aren't, use:
-
-```bash
-npx expo start --tunnel
-```
+Scan the QR code with Expo Go on a phone connected to the same Wi-Fi network. For a network that blocks local discovery, run `npx expo start --tunnel` instead. To use an Android emulator, start the server and press `a` in its terminal.
 
 ## Performance notes
 
-Test smoothness on a real device or with `npx expo start --no-dev --minify`; emulators with software rendering and Expo Go dev mode run slower than a release build.
+Test smoothness on a real device or with `npx expo start --no-dev --minify`; emulators using software rendering and Expo Go development mode can be slower than a release build.
 
 ## Folder structure
 
-```
+```text
 src/
-  app/          expo-router screens (tabs, modals, welcome, notifications)
-    (tabs)/     Home, Tasks, Schedule, Settings tab screens
-    task/       Task Details ([id]), Edit ([edit/id]), New modal
-    notifications.tsx  In-app notification center
+  app/          Expo Router routes and screens
+    (tabs)/     Home, Tasks, Schedule, and Settings
+    task/       Create, edit, and view task details
   components/
-    ui/         reusable primitives (AppText, Button, AnimatedCheckbox, Toast, ConfirmDialog…)
-    task/       task-specific components (TaskCard, TaskForm, pickers, swipe)
-  db/           SQLite client, migrations (v1+v2), and repository functions
-  store/        Zustand stores (tasks, settings, notifications, schedule, filters) and selectors
-  services/     notifications.ts — local reminder scheduling
-  theme/        tokens.ts — all colors, spacing, radii, typography
-  utils/        date helpers, route helpers
-  types.ts      shared TypeScript types
+    task/       Task cards, form, pickers, filters, and swipe actions
+    ui/         Shared controls, feedback, charts, and empty/error states
+  db/           SQLite setup, migrations, and repositories
+  hooks/        Motion preferences, fonts, and refresh behavior
+  services/     Notification scheduling, achievements, and feedback logic
+  store/        Zustand stores and task selectors
+  theme/        Shared color, spacing, typography, and radius tokens
+  utils/        Due-date rules, feedback, errors, and typed routes
 ```
 
 ## Architecture
 
-The UI reads from Zustand stores (`useTaskStore`, `useSettingsStore`, `useNotificationStore`) which act as an in-memory cache. Every mutation updates the store optimistically (so the UI feels instant), then writes to SQLite via repository functions in `src/db/`; on error the store rolls back and shows a toast. Notification scheduling is a side-effect layer that runs after every task mutation. The in-app notification inbox is generated deterministically from task state via `syncInbox()`, called on app start, foreground resume, and every 30 seconds.
+The UI reads and sends actions through Zustand stores, which hold the current app state. Stores optimistically update the visible state and persist changes through focused SQLite repositories, rolling back and reporting errors when writes fail. Local notifications run as a side-effect service, while notification history and derived rewards use the same task data.
+
+## Demo script
+
+1. Open the welcome screen, enter a name, and continue to Home.
+2. Use the center `+` button to create a task with a title, Study category, High priority, and a due time.
+3. Show the new task on Home, then open Schedule and locate it on its due day.
+4. Open the task's Details screen and point out its category, priority, due status, reminder, notes, and activity.
+5. Edit the title or notes, save, and return to Details to show the updated values.
+6. Complete the task from its card and show the immediate check animation, feedback, and celebration.
+7. Open Tasks, search for the task, then demonstrate the status, category, and priority filters.
+8. Open the notification center and show the unread state or the empty state; enable reminders if the device supports them.
+9. Open Settings and show the feedback toggles, achievements entry, clear-completed action, and reset confirmation.
+10. Restart the app and verify that the task, category, priority, and settings persisted.
+
+## Credits
+
+Built by Gauciv.

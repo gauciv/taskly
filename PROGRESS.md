@@ -114,9 +114,10 @@ Last updated: 2026-10-12
 - [x] U7.1  Circular checkbox (empty ring / lime check), burst unmounted at rest, inner dot removed
 - [x] U7.2  Labeled priority pill on cards, no standalone dots
 - [x] U7.3  Final QA: tsc, lint, doctor, bundle, hygiene, acceptance audit, app.json
-- [ ] U7.4  README + demo script, Status: COMPLETE, final commit
+- [x] U7.4  README + demo script, Status: COMPLETE, final commit
 
 ## Decisions
 - U7.1 root cause: the old checkbox intentionally rendered the category-colored ring burst and its sparks whenever motion was enabled, even at progress zero, so the ring/spark overlap read as a permanent inner dot. The replacement mounts the burst only while its shared progress is active; the resting unchecked tree contains only the empty circular outline.
 - U7.2: `PriorityBadge` is only used by the shared `TaskCard`, so Home, Tasks, and Schedule now all render the same flag-and-label pill after the due label or alone when there is no due date. A source search found no remaining priority-dot mode or list-specific priority indicator.
 - U7.3: TypeScript, lint, Expo Doctor (21/21), and Android export pass. Hygiene scan found no source color literals outside theme tokens, no `console.*` outside logger, no `withRepeat`, and no empty catches outside the haptics helper; the notification loader's optional-module catch logs DEV info. Removed seven unused direct Expo packages while retaining Expo Router peers and the chart's Expo gradient peer. Acceptance trace covered center add/prefilled Schedule date, CRUD + confirmation/Undo, shared completion/celebration path, Details/edit, SQLite/category persistence, due status, search/filter, notifications, settings/reset, achievements, and app metadata.
+- U7.4: Replaced the working-notes README with the submission document: requirement map, tech stack, folder structure, three-sentence architecture, run instructions, performance note, credits, and a ten-step demo script. Progress status is COMPLETE; the legacy P0–P11 checklist and U3–U7 checklists are all complete.
