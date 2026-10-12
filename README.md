@@ -119,3 +119,33 @@ A patch-only run finishes after the gate, with the build job marked skipped. For
 Builds usually take about 15–25 minutes. To build without publishing a release, open **Actions → Release APK → Run workflow**; the resulting APK is available as a downloadable workflow artifact.
 
 If publishing fails with a permissions error: Repository → Settings → Actions → General → Workflow permissions: Read and write.
+
+## Debugging the release build
+
+To collect verbose diagnostics, open **Actions → Release APK → Run workflow**, set **debug** to `true`, and start the run. The workflow summary shows the gate decision and preflight table. Download the `diagnostics` artifact from the build job; `diagnostics/REPORT.md` is the single file to share when asking for help. Diagnostics artifacts are retained for 14 days.
+
+Preflight checks cover:
+
+1. P1: runner toolchain, Android SDK/NDK, disk, memory, and CPU.
+2. P2: Node compatibility with installed package engine ranges.
+3. P3: Expo app config and version/package metadata.
+4. P4: Expo package alignment and Expo Doctor.
+5. P5: duplicate React/React Native versions and dependency tree.
+6. P6: Gradle-referenced Node commands and package resolution from Android and project directories.
+7. P7: Expo modules autolinking commands and their output.
+8. P8: production-like Android JavaScript bundle export.
+9. P9: reachability of Gradle, Google, Maven Central, and JitPack repositories.
+10. P10: Gradle properties, wrapper version, and project files.
+11. P11: case-sensitive relative and aliased imports in tracked source files.
+12. P12: Git status, current tag description, and commit SHA.
+
+After fixing a released version, a tag can be replaced with:
+
+```bash
+git tag -d vX.Y.Z
+git push origin :refs/tags/vX.Y.Z
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+Patch-only tags such as `v1.0.1` are skipped by design when the previous release tag has the same major and minor version. Use a debug workflow dispatch for diagnostics, or publish a new major/minor version when a new release build is intended.

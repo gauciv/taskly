@@ -3,8 +3,14 @@ name: Release APK
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v*'
   workflow_dispatch:
+    inputs:
+      debug:
+        description: Enable verbose Expo and Gradle diagnostics
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -20,6 +26,7 @@ jobs:
     outputs:
       build: ${{ steps.check.outputs.build }}
       version: ${{ steps.check.outputs.version }}
+      previous: ${{ steps.check.outputs.previous }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,11 +35,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then
+          if [ "${GITHUB_EVENT_NAME}" != "push" ]; then
             VERSION=$(jq -r '.expo.version' app.json)
             echo "build=true" >> "$GITHUB_OUTPUT"
             echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+            echo "previous=" >> "$GITHUB_OUTPUT"
             echo "Manual run: building ${VERSION}, no release will be published." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "previous=" >> "$GITHUB_OUTPUT"
+            echo "Ignoring non-release tag ${GITHUB_REF_NAME}; expected plain vX.Y.Z." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           CUR="${GITHUB_REF_NAME#v}"
@@ -40,6 +55,7 @@ jobs:
             | sed 's/^v//' | sort -V \
             | awk -v cur="$CUR" '$0==cur{exit} {prev=$0} END{print prev}')
           echo "version=${CUR}" >> "$GITHUB_OUTPUT"
+          echo "previous=${PREV:+v${PREV}}" >> "$GITHUB_OUTPUT"
           if [ -z "${PREV}" ]; then
             echo "build=true" >> "$GITHUB_OUTPUT"
             echo "First release tag (${CUR}): building." >> "$GITHUB_STEP_SUMMARY"
@@ -55,12 +71,16 @@ jobs:
     needs: gate
     if: needs.gate.outputs.build == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
+    env:
+      CI_DEBUG: ${{ github.event_name == 'workflow_dispatch' && inputs.debug || false }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
       - uses: actions/setup-java@v4
         with:
@@ -72,46 +92,102 @@ jobs:
         env:
           VERSION: ${{ needs.gate.outputs.version }}
         run: |
+          set -euo pipefail
           IFS=. read -r MA MI PA <<< "${VERSION%%-*}"
-          CODE=$(( MA * 10000 + MI * 100 + PA ))
+          CODE=$(( 10#$MA * 10000 + 10#$MI * 100 + 10#$PA ))
           jq --arg v "$VERSION" --argjson c "$CODE" \
             '.expo.version=$v | .expo.android.versionCode=$c' app.json > app.tmp && mv app.tmp app.json
+      - name: Validate Expo config
+        run: npx expo config --type public > /dev/null
       - name: Generate the native Android project
+        env:
+          EXPO_DEBUG: ${{ github.event_name == 'workflow_dispatch' && inputs.debug && '1' || '' }}
         run: npx expo prebuild --platform android --clean --no-install
       - name: Accept Android SDK licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
       - name: Configure Gradle memory
         run: echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" >> android/gradle.properties
+      - name: Test failure analyzer
+        run: bash scripts/ci/test-analyzer.sh
+      - name: Diagnose build environment
+        continue-on-error: true
+        run: bash scripts/ci/preflight.sh
       - uses: gradle/actions/setup-gradle@v4
-      - name: Build release APK
-        working-directory: android
-        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,x86_64
+      - name: Build release APK with diagnostics
+        run: bash scripts/ci/gradle-build.sh
       - name: Rename and checksum the APK
         env:
           VERSION: ${{ needs.gate.outputs.version }}
         run: |
+          set -euo pipefail
           APK=$(find android/app/build/outputs -type f -name '*.apk' | head -n 1)
           test -n "$APK"
           cp "$APK" "Taskly-v${VERSION}.apk"
           sha256sum "Taskly-v${VERSION}.apk" > "Taskly-v${VERSION}.apk.sha256"
-      - uses: actions/upload-artifact@v4
+      - name: Generate conventional commit changelog
+        if: success()
+        env:
+          PREVIOUS_TAG: ${{ needs.gate.outputs.previous }}
+          VERSION: ${{ needs.gate.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$PREVIOUS_TAG" ]]; then
+            range="${PREVIOUS_TAG}..HEAD"
+          else
+            range="HEAD"
+          fi
+          git log "$range" --pretty=format:%s > /tmp/taskly-commit-subjects.txt
+          {
+            printf '# Taskly %s\n\n' "$VERSION"
+            printf '## Changes\n\n'
+            for kind in feat fix perf refactor docs ci build chore; do
+              case "$kind" in
+                feat) title='Features';;
+                fix) title='Bug fixes';;
+                perf) title='Performance';;
+                refactor) title='Refactoring';;
+                docs) title='Documentation';;
+                ci) title='CI';;
+                build) title='Build';;
+                chore) title='Chores';;
+              esac
+              printf '### %s\n' "$title"
+              while IFS= read -r subject; do
+                if [[ "$subject" =~ ^${kind}(\([^)]*\))?:[[:space:]]+(.+)$ ]]; then
+                  printf -- '- %s\n' "${BASH_REMATCH[2]}"
+                fi
+              done < /tmp/taskly-commit-subjects.txt
+              printf '\n'
+            done
+          } > /tmp/taskly-changelog.md
+          {
+            cat /tmp/taskly-changelog.md
+            printf '\n## Install on Android\n\n'
+            printf '1. Download the `.apk` below on your phone.\n2. Open it and allow "Install unknown apps" for your browser or files app if asked.\n3. Open **Taskly**.\n\n'
+            printf 'Built for 64-bit Android phones (arm64) and x86_64 emulators. Signed with the standard Android debug key for sideloading; this key is not for Play Store publishing.\n'
+          } > CHANGELOG_BODY.md
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostics
+          path: diagnostics/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload APK artifact
+        if: success()
+        uses: actions/upload-artifact@v4
         with:
           name: Taskly-APK
           path: |
             Taskly-v*.apk
             Taskly-v*.apk.sha256
       - name: Publish GitHub Release
-        if: github.ref_type == 'tag'
+        if: github.event_name == 'push' && github.ref_type == 'tag' && success()
         uses: softprops/action-gh-release@v2
         with:
           files: |
             Taskly-v*.apk
             Taskly-v*.apk.sha256
-          generate_release_notes: true
-          body: |
-            ## Install on Android
-            1. Download the `.apk` below on your phone.
-            2. Open it and allow "Install unknown apps" for your browser/files app if asked.
-            3. Open **Taskly**.
-
-            Built for 64-bit Android phones (arm64) and x86_64 emulators. Signed with the standard Android debug key (fine for sideloading, not for the Play Store).
+          body_path: CHANGELOG_BODY.md
+          generate_release_notes: false
