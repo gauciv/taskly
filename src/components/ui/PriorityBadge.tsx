@@ -1,10 +1,10 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { Colors, tintedFill } from '@/theme/tokens';
 import { AppText } from './AppText';
 
 type Priority = 0 | 1 | 2;
-type Mode = 'dot' | 'label';
 
 const labels: Record<Priority, string> = { 0: 'Low', 1: 'Medium', 2: 'High' };
 const colors: Record<Priority, string> = {
@@ -13,22 +13,12 @@ const colors: Record<Priority, string> = {
   2: Colors.priority.high,
 };
 
-interface PriorityBadgeProps {
-  priority: Priority;
-  mode?: Mode;
-}
-
-export function PriorityBadge({ priority, mode = 'dot' }: PriorityBadgeProps) {
+export function PriorityBadge({ priority }: { priority: Priority }) {
   const color = colors[priority];
-
-  if (mode === 'dot') {
-    return <View style={[styles.dot, { backgroundColor: color }]} />;
-  }
-
   return (
-    <View style={[styles.label, { backgroundColor: tintedFill(color) }]}>
-      <View style={[styles.dot, { backgroundColor: color }]} />
-      <AppText variant="caption" color={color}>
+    <View style={[styles.pill, { backgroundColor: tintedFill(color) }]}>
+      <Feather name="flag" size={11} color={color} />
+      <AppText variant="caption" color={color} style={styles.label}>
         {labels[priority]}
       </AppText>
     </View>
@@ -36,17 +26,17 @@ export function PriorityBadge({ priority, mode = 'dot' }: PriorityBadgeProps) {
 }
 
 const styles = StyleSheet.create({
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  label: {
+  pill: {
+    height: 22,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 3,
     borderRadius: 999,
+  },
+  label: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 11,
+    lineHeight: 14,
   },
 });

@@ -1,175 +1,223 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, Pressable, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
+  cancelAnimation,
+  Easing,
+  runOnJS,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withSequence,
-  withTiming,
   withSpring,
-  interpolateColor,
-  runOnJS,
+  withTiming,
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
 import { useMotionPrefs } from '@/hooks/useMotionPrefs';
+import { haptic } from '@/utils/feedback';
 import { Colors } from '@/theme/tokens';
 
 interface AnimatedCheckboxProps {
   checked: boolean;
   onToggle: () => void;
-  categoryColor?: string;
   accessibilityLabel?: string;
 }
 
-/** Ring burst spark */
 const SPARK_COUNT = 8;
 const SPARK_RADIUS = 28;
 
-interface SparkProps {
+interface BurstPartProps {
   index: number;
   progress: SharedValue<number>;
-  color: string;
 }
 
-function Spark({ index, progress, color }: SparkProps) {
+function Spark({ index, progress }: BurstPartProps) {
   const angle = (index / SPARK_COUNT) * 2 * Math.PI;
   const style = useAnimatedStyle(() => {
-    const t = progress.value;
-    const dist = SPARK_RADIUS * t;
-    const x = Math.cos(angle) * dist;
-    const y = Math.sin(angle) * dist;
-    const opacity = Math.min(1, Math.max(0, t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4));
+    const t = Math.min(1, Math.max(0, progress.value));
     return {
-      position: 'absolute' as const,
-      width: 4,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: color,
-      opacity,
-      transform: [{ translateX: x }, { translateY: y }],
+      opacity: Math.min(1, Math.max(0, t < 0.6 ? 0.8 : 0.8 * (1 - (t - 0.6) / 0.4))),
+      transform: [
+        { translateX: Math.cos(angle) * SPARK_RADIUS * t },
+        { translateY: Math.sin(angle) * SPARK_RADIUS * t },
+        { scale: 1 - t * 0.45 },
+      ],
     };
   });
-  return <Animated.View style={style} />;
+  return <Animated.View pointerEvents="none" style={[styles.spark, style]} />;
 }
 
-/** Expanding ring burst */
-interface RingBurstProps {
-  progress: SharedValue<number>;
-  color: string;
-}
-
-function RingBurst({ progress, color }: RingBurstProps) {
+function RingBurst({ progress }: { progress: SharedValue<number> }) {
   const style = useAnimatedStyle(() => {
-    const t = progress.value;
-    const opacity = Math.min(1, Math.max(0, t < 0.5 ? 0.6 : 0.6 * (1 - (t - 0.5) / 0.5)));
-    const scale = 0.25 + Math.min(1, Math.max(0, t)) * 0.75;
+    const t = Math.min(1, Math.max(0, progress.value));
     return {
-      position: 'absolute' as const,
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      borderWidth: 1.5,
-      borderColor: color,
-      opacity,
-      transform: [{ scale }],
-      alignSelf: 'center' as const,
+      opacity: Math.min(1, Math.max(0, 0.6 * (1 - t))),
+      transform: [{ scale: 0.6 + t * 1.4 }],
     };
   });
-  return <Animated.View style={style} />;
+  return <Animated.View pointerEvents="none" style={[styles.burstRing, style]} />;
 }
 
-export function AnimatedCheckbox({
-  checked,
-  onToggle,
-  categoryColor,
-  accessibilityLabel,
-}: AnimatedCheckboxProps) {
-  const progress = useSharedValue(checked ? 1 : 0);
-  const scale = useSharedValue(1);
+export function AnimatedCheckbox({ checked, onToggle, accessibilityLabel }: AnimatedCheckboxProps) {
+  const { reduceMotion } = useMotionPrefs();
+  const fillScale = useSharedValue(checked ? 1 : 0);
+  const iconProgress = useSharedValue(checked ? 1 : 0);
+  const popScale = useSharedValue(1);
   const pressScale = useSharedValue(1);
   const burstProgress = useSharedValue(0);
-  const { reduceMotion } = useMotionPrefs();
+  const [playingBurst, setPlayingBurst] = useState(false);
+  const previousChecked = useRef(checked);
 
-  const burstColor = categoryColor ?? Colors.lime;
+  useAnimatedReaction(
+    () => Math.min(1, Math.max(0, burstProgress.value)),
+    (value, previous) => {
+      if (value > 0 && (previous === null || previous === 0)) runOnJS(setPlayingBurst)(true);
+      if (value >= 1) runOnJS(setPlayingBurst)(false);
+    },
+  );
 
   useEffect(() => {
-    progress.value = withTiming(checked ? 1 : 0, { duration: 200 });
-    if (checked && !reduceMotion) {
-      // Pop scale
-      scale.value = withSequence(
-        withTiming(1.25, { duration: 80 }),
-        withSpring(1, { damping: 14, stiffness: 300 })
-      );
-      // Ring burst
+    const changed = previousChecked.current !== checked;
+    previousChecked.current = checked;
+    if (reduceMotion) {
+      cancelAnimation(burstProgress);
+      fillScale.value = checked ? 1 : 0;
+      iconProgress.value = checked ? 1 : 0;
+      popScale.value = 1;
       burstProgress.value = 0;
-      burstProgress.value = withTiming(1, { duration: 450 });
-    } else if (!checked) {
-      // Reverse pop only
-      scale.value = withSequence(
-        withTiming(0.85, { duration: 80 }),
-        withSpring(1, { damping: 18, stiffness: 220 })
-      );
+      return;
+    }
+    if (!changed) return;
+
+    if (checked) {
+      fillScale.value = 0;
+      iconProgress.value = 0;
+      fillScale.value = withSpring(1, { damping: 16, stiffness: 280 });
+      iconProgress.value = withDelay(60, withTiming(1, { duration: 120, easing: Easing.out(Easing.cubic) }));
+      popScale.value = withDelay(140, withSequence(
+        withTiming(1.15, { duration: 45 }),
+        withSpring(1, { damping: 13, stiffness: 320 }),
+      ));
+      burstProgress.value = 0;
+      burstProgress.value = withTiming(1, { duration: 450, easing: Easing.out(Easing.cubic) });
+    } else {
+      cancelAnimation(burstProgress);
+      burstProgress.value = 0;
+      fillScale.value = withTiming(0, { duration: 120, easing: Easing.out(Easing.quad) });
+      iconProgress.value = withTiming(0, { duration: 80 });
+      popScale.value = withTiming(1, { duration: 100 });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checked, reduceMotion]);
 
-  const boxStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(progress.value, [0, 1], ['transparent', Colors.lime]),
-    borderColor: interpolateColor(progress.value, [0, 1], [Colors.textFaint, Colors.lime]),
-    transform: [{ scale: scale.value * pressScale.value }],
+  const touchStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: Math.min(1, Math.max(0.9, pressScale.value)) }],
+  }));
+  const fillStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: Math.min(1, Math.max(0, fillScale.value)) }],
+  }));
+  const iconStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(1, Math.max(0, iconProgress.value)),
+    transform: [{ scale: Math.min(1, Math.max(0, iconProgress.value)) }],
+  }));
+  const popStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: Math.min(1.15, Math.max(1, popScale.value)) }],
   }));
 
   function handlePress() {
-    pressScale.value = withSequence(
-      withTiming(0.96, { duration: 40 }),
-      withSpring(1, { damping: 18, stiffness: 300 }),
-    );
-    runOnJS(onToggle)();
+    haptic.light();
+    onToggle();
   }
 
   return (
     <Pressable
       onPress={handlePress}
-      accessibilityLabel={accessibilityLabel ?? (checked ? 'Mark incomplete' : 'Mark complete')}
+      onPressIn={() => {
+        if (!reduceMotion) pressScale.value = withTiming(0.9, { duration: 75 });
+      }}
+      onPressOut={() => {
+        pressScale.value = withSpring(1, { damping: 18, stiffness: 320 });
+      }}
+      accessibilityLabel={accessibilityLabel ?? (checked ? 'Mark task as not completed' : 'Mark task as completed')}
       accessibilityRole="checkbox"
       accessibilityState={{ checked }}
       hitSlop={8}
-      style={styles.pressable}
+      style={styles.hitTarget}
     >
-      {/* Burst layer — behind the box */}
-      {!reduceMotion && (
-        <View style={styles.burstWrap} pointerEvents="none">
-          <RingBurst progress={burstProgress} color={burstColor} />
-          {Array.from({ length: SPARK_COUNT }, (_, i) => (
-            <Spark key={i} index={i} progress={burstProgress} color={burstColor} />
-          ))}
-        </View>
-      )}
-      <Animated.View style={[styles.box, boxStyle]}>
-        {checked && <Feather name="check" size={14} color={Colors.onAccent} />}
+      <Animated.View style={[styles.circle, { borderColor: checked ? Colors.lime : Colors.textFaint }, touchStyle]}>
+        {playingBurst && checked && !reduceMotion && (
+          <View pointerEvents="none" style={styles.burstLayer}>
+            <RingBurst progress={burstProgress} />
+            {Array.from({ length: SPARK_COUNT }, (_, index) => (
+              <Spark key={index} index={index} progress={burstProgress} />
+            ))}
+          </View>
+        )}
+        {checked && (
+          <Animated.View style={[styles.popLayer, popStyle]}>
+              <Animated.View style={[styles.fill, fillStyle]} />
+              <Animated.View style={[styles.check, iconStyle]}>
+                <Feather name="check" size={16} color={Colors.onAccent} />
+              </Animated.View>
+          </Animated.View>
+        )}
       </Animated.View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  pressable: {
+  hitTarget: {
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  burstWrap: {
+  circle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    borderColor: Colors.textFaint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  popLayer: {
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fill: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: 11,
+    backgroundColor: Colors.lime,
+  },
+  check: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  burstLayer: {
     position: 'absolute',
     width: 60,
     height: 60,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  box: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
+  burstRing: {
+    position: 'absolute',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    borderColor: Colors.lime,
+  },
+  spark: {
+    position: 'absolute',
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.lime,
   },
 });

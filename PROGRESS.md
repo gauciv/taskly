@@ -109,3 +109,12 @@ Last updated: 2026-10-11
 
 ## Blockers
 (anything that stopped progress; empty if none)
+
+## Final
+- [x] U7.1  Circular checkbox (empty ring / lime check), burst unmounted at rest, inner dot removed
+- [ ] U7.2  Labeled priority pill on cards, no standalone dots
+- [ ] U7.3  Final QA: tsc, lint, doctor, bundle, hygiene, acceptance audit, app.json
+- [ ] U7.4  README + demo script, Status: COMPLETE, final commit
+
+## Decisions
+- U7.1 root cause: the old checkbox intentionally rendered the category-colored ring burst and its sparks whenever motion was enabled, even at progress zero, so the ring/spark overlap read as a permanent inner dot. The replacement mounts the burst only while its shared progress is active; the resting unchecked tree contains only the empty circular outline.

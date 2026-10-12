@@ -113,14 +113,13 @@ function TaskCardInner({ task: taskInput, category, onPress, onToggle, index = 0
                   <Text style={[styles.dueText, { color: dueColor }]}>{dueLabel}</Text>
                 </View>
               ) : null}
-              <PriorityBadge priority={task.priority} mode="dot" />
+              <PriorityBadge priority={task.priority} />
             </View>
           </View>
           <AnimatedCheckbox
             checked={task.completed}
             onToggle={onToggle}
-            categoryColor={category?.color}
-            accessibilityLabel={`Mark ${task.title} ${task.completed ? 'incomplete' : 'complete'}`}
+            accessibilityLabel={`Mark ${task.title} as ${task.completed ? 'not completed' : 'completed'}`}
           />
         </PressableScale>
         </View>
