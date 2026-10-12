@@ -62,12 +62,6 @@ export default function ScheduleScreen() {
     setScheduleDay(day.getTime());
   }, [setScheduleDay]);
 
-  const openNew = useCallback(() => {
-    const d = new Date(selectedDay);
-    d.setHours(9, 0, 0, 0);
-    router.push({ pathname: '/task/new', params: { due: String(d.getTime()) } });
-  }, [selectedDay]);
-
   return (
     <Screen edges={['top', 'left', 'right']}>
       {/* Header */}
@@ -156,9 +150,7 @@ export default function ScheduleScreen() {
             <EmptyState
               icon="calendar"
               title="Nothing planned"
-              subtitle="Enjoy your day!"
-              actionLabel="Add task"
-              onAction={openNew}
+              subtitle="Tap the + button to plan something for this day."
             />
           ) : (
             <>

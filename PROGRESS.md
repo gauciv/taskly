@@ -76,6 +76,15 @@ Last updated: 2026-10-11
 - U4.3: EmptyState is static across all routes; the only former `withRepeat` usage was its decorative float. Every remaining `withSequence` is a finite interaction response (field/button/card shake, press/checkbox feedback, or toast error shake).
 - U4.4 layout review: at 360 px the hero has 286 px inner width (104 px ring zone, divider, gaps, and a shrinkable chart zone); at 412 px it has 338 px. The row and chart tracks remain fixed/in-flow, the card has `minHeight: 148` and no max-height, and bars cap at 20 px. Scenarios checked from selectors: due-today tasks show the ratio; completion of all due-today tasks shows check/All done; completed-only overdue data yields the appropriate completed-today or Free day state; no-today tasks with existing history show Free day; zero total tasks hide the hero. Empty state appears only when today's/overdue list is empty. Home absolute elements are the two decorative notch overlays; hero's sole absolute element is the centered ring label. No Home content uses `height: '100%'`.
 
+## Fix 5
+- [x] U5.1  Add-task buttons removed from empty states, copy updated, EmptyState centered
+- [ ] U5.2  Home chart rebuilt (gifted-charts area line, or SVG fallback), ring tweak
+- [ ] U5.3  Final QA, grep checks, README, commit
+
+## Decisions
+- Fix 5: use `react-native-gifted-charts` for the Home area chart if installed version supports Expo Go gradients and the requested point interactions; otherwise use the specified SVG fallback.
+- U5.1: the Home zero-task state uses the same “No tasks yet” copy as Tasks; Schedule's selected day is accessed through the raised tab-bar +, so the empty state has no separate task-creation action.
+
 ## Known issues
 (non-blocking bugs or warnings)
 

@@ -272,9 +272,7 @@ export default function TasksScreen() {
           <EmptyState
             icon="check-square"
             title="No tasks yet"
-            subtitle="Tap + to add your first task"
-            actionLabel="Add task"
-            onAction={() => router.push('/task/new')}
+            subtitle="Tap the + button to add your first task."
           />
         </View>
       ) : noResults ? (

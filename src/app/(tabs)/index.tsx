@@ -151,11 +151,9 @@ export default function HomeScreen() {
           />
           {todaySlice.length === 0 ? (
             <EmptyState
-              icon="sun"
-              title="All clear for today"
-              subtitle="No tasks due. Enjoy your day!"
-              actionLabel="Add your first task"
-              onAction={() => router.push('/task/new')}
+              icon={tasks.length === 0 ? 'check-square' : 'sun'}
+              title={tasks.length === 0 ? 'No tasks yet' : 'All clear for today'}
+              subtitle={tasks.length === 0 ? 'Tap the + button to add your first task.' : 'No tasks due. Enjoy your day!'}
             />
           ) : (
             <View style={styles.taskList}>
