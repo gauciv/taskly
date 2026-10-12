@@ -66,7 +66,7 @@ process.exitCode = mismatch ? 1 : 0;
 NODE'
 record_probe P3 'Expo config' 'jq empty app.json && npx expo config --type public && jq -r "[.expo.version, (.expo.android.versionCode // \"unset\"), .expo.android.package] | @tsv" app.json' FAIL
 record_probe P4 'Expo version alignment' 'npx expo install --check; install_code=$?; npx expo-doctor; doctor_code=$?; (( install_code == 0 && doctor_code == 0 ))'
-record_probe P5 'Duplicate/mismatched packages' 'npm ls react react-native react-native-reanimated react-native-worklets expo --all 2>&1 | sed -n "1,80p"; react_versions=$(npm ls react --all 2>/dev/null | grep -Eo "react@[0-9][^ ]*" | sort -u | wc -l); native_versions=$(npm ls react-native --all 2>/dev/null | grep -Eo "react-native@[0-9][^ ]*" | sort -u | wc -l); echo "Distinct react versions: $react_versions"; echo "Distinct react-native versions: $native_versions"; [[ "$react_versions" -le 1 && "$native_versions" -le 1 ]]'
+record_probe P5 'Duplicate/mismatched packages' 'npm ls react react-native react-native-reanimated react-native-worklets expo --all 2>&1 | sed -n "1,80p"; tree_code=$?; react_versions=$(npm ls react --all 2>/dev/null | grep -Eo "react@[0-9][^ ]*" | sort -u | wc -l); native_versions=$(npm ls react-native --all 2>/dev/null | grep -Eo "react-native@[0-9][^ ]*" | sort -u | wc -l); echo "npm ls exit: $tree_code"; echo "Distinct react versions: $react_versions"; echo "Distinct react-native versions: $native_versions"; [[ "$tree_code" -eq 0 && "$react_versions" -le 1 && "$native_versions" -le 1 ]]'
 
 if [[ "$dry" == 1 ]]; then
   for id in P6 P7 P8 P9 P10 P11 P12; do record_probe "$id" 'Dry mode' 'CI probes intentionally skipped locally' SKIP; done

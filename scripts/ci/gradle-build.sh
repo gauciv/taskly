@@ -16,15 +16,17 @@ if [[ "${CI_DEBUG:-false}" == true ]]; then
 fi
 
 while [[ "$attempt" -le "$max_attempts" ]]; do
+  attempt_log="$(mktemp "${TMPDIR:-/tmp}/taskly-gradle-attempt.XXXXXX")"
   printf '\n===== ATTEMPT %s =====\n' "$attempt" | tee -a "$log"
   if [[ "${CI_DEBUG:-false}" == true ]]; then
-    (cd android && ./gradlew assembleRelease --no-daemon --stacktrace --info -PreactNativeArchitectures=arm64-v8a,x86_64) 2>&1 | tee -a "$log"
+    (cd android && ./gradlew assembleRelease --no-daemon --stacktrace --info -PreactNativeArchitectures=arm64-v8a,x86_64) 2>&1 | tee -a "$log" "$attempt_log"
   else
-    (cd android && ./gradlew assembleRelease --no-daemon --stacktrace -PreactNativeArchitectures=arm64-v8a,x86_64) 2>&1 | tee -a "$log"
+    (cd android && ./gradlew assembleRelease --no-daemon --stacktrace -PreactNativeArchitectures=arm64-v8a,x86_64) 2>&1 | tee -a "$log" "$attempt_log"
   fi
   build_code=${PIPESTATUS[0]}
-  if [[ "$build_code" -eq 0 ]]; then break; fi
-  failure_hints="$(bash scripts/ci/analyze-failure.sh "$log")"
+  if [[ "$build_code" -eq 0 ]]; then rm -f "$attempt_log"; break; fi
+  failure_hints="$(bash scripts/ci/analyze-failure.sh "$attempt_log")"
+  rm -f "$attempt_log"
   if [[ "$attempt" -lt "$max_attempts" ]] && grep -q '^HINT NETWORK:' <<< "$failure_hints"; then
     wait_seconds=$((attempt * 20))
     printf 'Retrying network failure in %s seconds (attempt %s/%s).\n' "$wait_seconds" "$((attempt + 1))" "$max_attempts" | tee -a "$log"
