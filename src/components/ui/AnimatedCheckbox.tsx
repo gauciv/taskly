@@ -39,7 +39,7 @@ function Spark({ index, progress, color }: SparkProps) {
     const dist = SPARK_RADIUS * t;
     const x = Math.cos(angle) * dist;
     const y = Math.sin(angle) * dist;
-    const opacity = t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4;
+    const opacity = Math.min(1, Math.max(0, t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4));
     return {
       position: 'absolute' as const,
       width: 4,
@@ -62,16 +62,17 @@ interface RingBurstProps {
 function RingBurst({ progress, color }: RingBurstProps) {
   const style = useAnimatedStyle(() => {
     const t = progress.value;
-    const size = 12 + t * (24 * 2 - 12);
-    const opacity = t < 0.5 ? 0.6 : 0.6 * (1 - (t - 0.5) / 0.5);
+    const opacity = Math.min(1, Math.max(0, t < 0.5 ? 0.6 : 0.6 * (1 - (t - 0.5) / 0.5)));
+    const scale = 0.25 + Math.min(1, Math.max(0, t)) * 0.75;
     return {
       position: 'absolute' as const,
-      width: size,
-      height: size,
-      borderRadius: size / 2,
+      width: 48,
+      height: 48,
+      borderRadius: 24,
       borderWidth: 1.5,
       borderColor: color,
       opacity,
+      transform: [{ scale }],
       alignSelf: 'center' as const,
     };
   });

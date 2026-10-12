@@ -1,4 +1,6 @@
 // Design tokens — single source of truth for all colors, typography, spacing, and shape
+import { withAlpha } from './colors';
+export { withAlpha };
 export const Colors = {
   bg: '#08080A',
   surface: '#131316',
@@ -30,7 +32,7 @@ export const Colors = {
 
 // Tinted fill: accent at ~18% opacity
 export function tintedFill(hex: string): string {
-  return hex + '2E';
+  return withAlpha(hex, 0.18);
 }
 
 export const Typography = {

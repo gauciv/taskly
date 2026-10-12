@@ -64,8 +64,9 @@ function TaskCardInner({ task, category, onPress, onToggle, index = 0 }: TaskCar
   }, [isHighlighted, highlightNonce]);
 
   const highlightStyle = useAnimatedStyle(() => ({
-    borderColor: `rgba(217,255,63,${borderOpacity.value})`,
-    borderWidth: 1.5,
+    opacity: Math.min(1, Math.max(0, borderOpacity.value)),
+  }));
+  const scaleStyle = useAnimatedStyle(() => ({
     transform: [{ scale: cardScale.value }],
   }));
 
@@ -77,7 +78,9 @@ function TaskCardInner({ task, category, onPress, onToggle, index = 0 }: TaskCar
       entering={FadeInDown.delay(delay).duration(220)}
       exiting={FadeOutLeft.duration(180)}
     >
-      <Animated.View style={highlightStyle}>
+      <Animated.View style={scaleStyle}>
+        <View style={styles.highlightFrame}>
+        <Animated.View pointerEvents="none" style={[styles.highlightBorder, highlightStyle]} />
         <PressableScale
           onPress={onPress}
           style={[styles.card, { backgroundColor: cardBg }]}
@@ -114,6 +117,7 @@ function TaskCardInner({ task, category, onPress, onToggle, index = 0 }: TaskCar
             accessibilityLabel={`Mark ${task.title} ${task.completed ? 'incomplete' : 'complete'}`}
           />
         </PressableScale>
+        </View>
       </Animated.View>
     </Animated.View>
   );
@@ -122,6 +126,8 @@ function TaskCardInner({ task, category, onPress, onToggle, index = 0 }: TaskCar
 export const TaskCard = memo(TaskCardInner);
 
 const styles = StyleSheet.create({
+  highlightFrame: { position: 'relative', borderRadius: Radii.taskCard },
+  highlightBorder: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: Radii.taskCard, borderWidth: 2, borderColor: Colors.lime },
   card: {
     borderRadius: Radii.taskCard,
     padding: Spacing.s4,

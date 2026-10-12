@@ -87,6 +87,16 @@ Last updated: 2026-10-11
 - U5.2 dependency decision: installed gifted-charts 1.4.81; peer dependencies list React, React Native, `react-native-svg`, and optional `expo-linear-gradient`/`react-native-linear-gradient`. The project's existing Expo Go dependencies include `react-native-svg` and `expo-linear-gradient`; no native gradient module was added. The chart renders area gradients with its SVG gradient implementation.
 - U5.3 QA: no add-task copy remains in source; only Clear filters retains an EmptyState-adjacent action. No `withRepeat` calls remain. ProgressHero's sole absolute layout is the centered ring label (`StyleSheet.absoluteFill`); no fixed `height: '100%'` remains there. Read-through covered multiple-day data, today-only data, all-zero history, no tasks, empty Tasks/Schedule, and filtered no-results. At 360 px the hero right zone has about 149 px before chart inset; at 412 px about 201 px. The 72 px plot/labels box and data-driven card height remain stable, with the smaller 72 px ring freeing extra space.
 
+## Fix 6
+- [x] U6.1  Reanimated invalid color crash fixed (opacity-based pulses, withAlpha helper, audit)
+- [ ] U6.2  Category persistence bug fixed (root cause logged, safe seeding/migrations, read-after-write)
+- [ ] U6.3  getDueStatus single source of truth (date-only overdue bug, formatSpan)
+- [ ] U6.4  Task Details redesign (hero, due card, info cards, notes, activity timeline, sticky action bar)
+- [ ] U6.5  Feedback latency/jank pass (no awaits before feedback, delayed re-sort, memoized lists, prewarmed confetti)
+- [ ] U6.6  Final QA, grep checks, README, commit
+- Fix 6 U6.1: animated color alpha formatting can produce scientific notation and fail Reanimated's parser. Use fixed colors with animated opacity for pulses; `withAlpha` is for static tints only.
+- U6.1 root cause confirmed: `TaskCard` interpolated `borderOpacity.value` into an `rgba()` string inside `useAnimatedStyle`; its final near-zero timing frame produced exponent notation. The highlight now overlays a fixed lime border and animates clamped opacity; scale is a separate animated wrapper. Checkbox burst ring uses fixed geometry/color with opacity/scale animation.
+
 ## Known issues
 (non-blocking bugs or warnings)
 
