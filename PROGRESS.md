@@ -137,7 +137,7 @@ Last updated: 2026-10-12
 
 ## Fix 10
 - [x] U10.1  analyze-failure.sh + fixtures + test-analyzer.sh passing
-- [ ] U10.2  node-shim.sh tested locally (stdout, exit code, stderr capture, stdin)
+- [x] U10.2  node-shim.sh tested locally (stdout, exit code, stderr capture, stdin)
 - [ ] U10.3  preflight.sh with probes P1–P12 (never fails the job)
 - [ ] U10.4  gradle-build.sh: retries, failure pipeline, REPORT.md
 - [ ] U10.5  Workflow integration, YAML/bash validation, README "Debugging the release build"
@@ -147,3 +147,4 @@ Last updated: 2026-10-12
 - Fix 10 supersedes Fix 9 U9.1 local Gradle reproduction; all build diagnosis will run in GitHub Actions, and Gradle will not be run locally.
 - Fix 10 boot found a pre-existing `gradle-debug.log` with the reported Foojay plugin DNS failure and an uncommitted `package.json` script change (`expo run:*` replacing `expo start --*`). The log is diagnostic input and will not be committed; the unrelated package script edit is preserved unless later evidence shows it is generated build noise.
 - U10.1: added all 16 requested signature rules and realistic fixtures, including the observed hidden Node exit and Foojay DNS failure. `test-analyzer.sh` passes 16/16; it captures analyzer output before searching so test consumers do not close the evidence pipe early.
+- U10.2: the generated PATH wrapper delegates stdout/stdin directly, captures and replays stderr, logs escaped argv/cwd/exit, and records up to 4000 stderr bytes for failures. Local checks passed `node --print`, exact exit 3 + stderr, and stdin piping; test diagnostics were removed.
