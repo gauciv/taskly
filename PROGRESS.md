@@ -1,6 +1,6 @@
 # Taskly: Build Progress
 Status: COMPLETE
-Current phase: Final U7
+Current phase: Final 2
 Last updated: 2026-10-12
 
 ## Checklist (tick [x] only when verified)
@@ -107,6 +107,7 @@ Last updated: 2026-10-12
 ## Known issues
 - Android export succeeds. The runner emits a Node `NO_COLOR` ignored because `FORCE_COLOR` is set notice; it does not affect the app bundle.
 - Android prebuild succeeds and creates `android/app/debug.keystore`, with Expo's non-blocking notice that `expo-system-ui` is not installed for the configured `userInterfaceStyle`; the app's screens use their own dark theme.
+- npm reported 30 dependency audit findings (11 moderate, 19 high) during the approved avatar-package install; dependency versions were not force-upgraded as part of this patch.
 
 ## Blockers
 (anything that stopped progress; empty if none)
@@ -126,9 +127,10 @@ Last updated: 2026-10-12
 ## Final 2
 - [x] U8.1  Generated avatars (DiceBear or fallback), Avatar component, picker sheet, welcome preview, initials removed
 - [x] U8.2  release-apk.yml (gate: major/minor change only), .gitignore, lockfile, prebuild + YAML + gate validation
-- [ ] U8.3  README (avatars credit + Releasing), final QA, Status: COMPLETE, final commit (no tag, no push)
+- [x] U8.3  README (avatars credit + Releasing), final QA, Status: COMPLETE, final commit (no tag, no push)
 
 ## Decisions
 - U8.1: use DiceBear Lorelei (`@dicebear/core` and `@dicebear/lorelei`, both MIT package licenses; Lorelei artwork is CC0 1.0). Avatar SVG is generated on-device from the seed and cached in memory; no network requests or attribution requirement.
 - U8.2: GitHub Actions uses the immediately preceding plain semantic-version tag (version-sorted) as the comparison baseline; it builds only when the major/minor pair changes. Manual dispatch builds an artifact without publishing a release. Android native files are generated per CI run and remain ignored locally.
 - U8.2 validation: workflow YAML parsed; gate simulation passed first-release, major/minor, patch-only, and higher-patch cases. CI-mode Android prebuild completed and generated the standard debug keystore; the generated `android/` directory was removed. `package-lock.json` and `package.json` dependency sets match.
+- U8.3: README documents local DiceBear avatars, app features, tech/architecture/run instructions, and the release workflow including exact version examples, manual artifacts, install/signing details, and permissions recovery. Final TypeScript/lint/Android export passed; source hygiene found no initials avatars, non-token color literals, or console calls outside the guarded logger. `npm ci --ignore-scripts --dry-run --offline` confirmed lockfile install consistency. No tag, remote, or push was created.

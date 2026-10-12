@@ -37,6 +37,10 @@ Taskly is a dark, mobile task planner built for a Mobile Application Development
 
 React Native, Expo SDK 57, TypeScript, Expo Router, Expo SQLite, Zustand, Reanimated, Feather icons, `react-native-svg`, `react-native-gifted-charts`, `expo-linear-gradient`, and Poppins.
 
+## Avatars
+
+Profile avatars are generated locally from a saved seed with DiceBear Lorelei and rendered as SVG; they work offline and do not send profile data over the network. The DiceBear core and style packages are MIT licensed, and the Lorelei artwork is CC0 1.0, so attribution is not required. [DiceBear Lorelei license](https://github.com/dicebear/styles/blob/main/LICENSE.md).
+
 ## How to run
 
 ```bash
@@ -88,3 +92,30 @@ The UI reads and sends actions through Zustand stores, which hold the current ap
 ## Credits
 
 Built by Gauciv.
+
+## Releasing
+
+Push a version tag to start the Android release workflow:
+
+```bash
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+The workflow builds only when the pushed tag's `major.minor` pair differs from the immediately previous lower plain `vX.Y.Z` tag (versions are sorted numerically). The first matching version tag builds. Patch-only tags skip the build.
+
+| New tag | Previous tag | Result |
+|---|---|---|
+| `v1.0.0` | none | Build first release |
+| `v1.1.0` | `v1.0.0` | Build: minor changed |
+| `v1.1.1` | `v1.1.0` | Skip: patch only |
+| `v1.1.2` | `v1.1.1` | Skip: patch only |
+| `v1.2.0` | `v1.1.2` | Build: minor changed |
+| `v1.2.5` | `v1.1.2` | Build: minor changed |
+| `v2.0.0` | `v1.2.5` | Build: major changed |
+
+A patch-only run finishes after the gate, with the build job marked skipped. For a release build, download the APK and SHA-256 file from **GitHub → Releases**. Builds target 64-bit Android phones (`arm64-v8a`) and x86_64 emulators. Allow installation from the browser or file manager when Android asks, then open Taskly. APKs use the standard Android debug key for sideloading and updates; this key is not suitable for Play Store publication. A private repository requires you to be signed in with repository access to download its APK.
+
+Builds usually take about 15–25 minutes. To build without publishing a release, open **Actions → Release APK → Run workflow**; the resulting APK is available as a downloadable workflow artifact.
+
+If publishing fails with a permissions error: Repository → Settings → Actions → General → Workflow permissions: Read and write.
