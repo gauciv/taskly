@@ -50,6 +50,10 @@ export const useToastStore = create<ToastStore>((set, get) => ({
 
     if (!current) {
       set({ current: item });
+    } else if (type === 'error') {
+      set({ current: item });
+    } else if (type === 'success' || type === 'info') {
+      set({ current: item });
     } else if (queue.length < MAX_QUEUE) {
       set({ queue: [...queue, item] });
     }

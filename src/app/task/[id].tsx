@@ -10,7 +10,6 @@ import { IconButton } from '@/components/ui/IconButton';
 import { Button } from '@/components/ui/Button';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { showToast } from '@/components/ui/Toast';
 import { confirm } from '@/components/ui/ConfirmDialog';
 import { taskEditHref } from '@/utils/routes';
 import { formatDueTime, formatSpan, getDueStatus } from '@/utils/dueStatus';
@@ -107,7 +106,6 @@ export default function TaskDetailsScreen() {
   const categories = useTaskStore((s) => s.categories);
   const toggleComplete = useTaskStore((s) => s.toggleComplete);
   const deleteTask = useTaskStore((s) => s.deleteTask);
-  const restoreTask = useTaskStore((s) => s.restoreTask);
   const notificationsEnabled = useSettingsStore((s) => s.notificationsEnabled);
   const reminderOffsetMin = useSettingsStore((s) => s.reminderOffsetMin);
 
@@ -140,7 +138,6 @@ export default function TaskDetailsScreen() {
   ];
 
   function handleToggle() {
-    haptic.light();
     void toggleComplete(t.id);
   }
 
@@ -154,10 +151,7 @@ export default function TaskDetailsScreen() {
     if (!ok) return;
     haptic.medium();
     const snapshot = await deleteTask(t.id);
-    if (snapshot) {
-      router.back();
-      showToast('Task deleted', { label: 'Undo', onPress: () => restoreTask(snapshot) });
-    }
+    if (snapshot) router.back();
   }
 
   return (
@@ -244,6 +238,7 @@ export default function TaskDetailsScreen() {
           onPress={handleToggle}
           size="lg"
           fullWidth
+          haptic={false}
           style={styles.completeButton}
         />
       </View>

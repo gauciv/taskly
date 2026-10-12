@@ -133,34 +133,36 @@ function OverlayContent({ event, onDismiss }: OverlayContentProps) {
 export function CelebrationOverlay() {
   const { current, dismiss } = useCelebrationStore();
   const { skipCelebrations } = useMotionPrefs();
-
-  if (!current || skipCelebrations) return null;
-
-  const showConfetti = current.type === 'all_done' || current.type === 'achievement';
-  const showSmallConfetti = current.type === 'default';
-  const originX = current.type === 'default' ? current.originX : undefined;
-  const originY = current.type === 'default' ? current.originY : undefined;
-
-  // Default events: just a small confetti burst from origin, no overlay card
-  if (current.type === 'default') {
-    return (
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Confetti count={12} originX={originX} originY={originY} onFinish={dismiss} />
-      </View>
-    );
-  }
+  useEffect(() => {
+    if (skipCelebrations && current) dismiss();
+  }, [skipCelebrations, current, dismiss]);
+  const burstKey = current ? JSON.stringify(current) : '';
+  const active = !!current && !skipCelebrations && (current.type === 'default' || current.type === 'all_done' || current.type === 'achievement');
+  const content = current && current.type !== 'default' && !skipCelebrations ? getEventContent(current) : null;
+  const defaultBurst = current?.type === 'default';
 
   return (
-    <TouchableOpacity
-      style={StyleSheet.absoluteFill}
-      activeOpacity={1}
-      onPress={dismiss}
-      accessibilityLabel="Dismiss celebration"
-    >
-      {showConfetti && <Confetti count={40} originX={originX} originY={originY} />}
-      {showSmallConfetti && <Confetti count={12} originX={originX} originY={originY} />}
-      <OverlayContent event={current} onDismiss={dismiss} />
-    </TouchableOpacity>
+    <>
+      <Confetti
+        active={active}
+        burstKey={burstKey}
+        count={defaultBurst ? 12 : 36}
+        originX={defaultBurst ? current?.originX : undefined}
+        originY={defaultBurst ? current?.originY : undefined}
+        spread={defaultBurst ? 1 : 3.5}
+        onFinish={defaultBurst ? dismiss : undefined}
+      />
+      {content && (
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={dismiss}
+          accessibilityLabel="Dismiss celebration"
+        >
+          <OverlayContent event={current!} onDismiss={dismiss} />
+        </TouchableOpacity>
+      )}
+    </>
   );
 }
 

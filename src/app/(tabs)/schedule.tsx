@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -33,6 +33,11 @@ export default function ScheduleScreen() {
 
   const [anchor, setAnchor] = useState(() => Date.now());
   const [selectedDay, setSelectedDay] = useState(() => new Date());
+  const [enteringEnabled, setEnteringEnabled] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setEnteringEnabled(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
   const { refreshing, onRefresh } = usePullRefresh();
 
   const days = useMemo(() => weekDays(anchor), [anchor]);
@@ -166,6 +171,7 @@ export default function ScheduleScreen() {
                         onPress={() => router.push(taskDetailsHref(task.id))}
                         onToggle={() => toggleComplete(task.id)}
                         index={i}
+                        enteringEnabled={enteringEnabled}
                       />
                     </View>
                   ))}
@@ -192,6 +198,7 @@ export default function ScheduleScreen() {
                             onPress={() => router.push(taskDetailsHref(task.id))}
                             onToggle={() => toggleComplete(task.id)}
                             index={i}
+                            enteringEnabled={enteringEnabled}
                           />
                         </View>
                       </View>

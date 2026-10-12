@@ -32,6 +32,7 @@ export const useCelebrationStore = create<CelebrationStore>((set, get) => ({
 
   celebrate: (event) => {
     const { current, queue } = get();
+    if (event.type === 'default' && (current?.type === 'default' || queue.some((queued) => queued.type === 'default'))) return;
     if (!current) {
       set({ current: event });
       return;

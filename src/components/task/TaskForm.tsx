@@ -15,7 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import { haptic } from '@/utils/feedback';
-import { logError } from '@/utils/logger';
+import { reportError } from '@/utils/errors';
 import { router } from 'expo-router';
 import { Task, TaskInput, Priority } from '@/types';
 import { Colors, Spacing, Radii } from '@/theme/tokens';
@@ -44,7 +44,6 @@ export function TaskForm({ task, prefillCategoryId, prefillDue }: TaskFormProps)
   const addTask = useTaskStore((s) => s.addTask);
   const updateTask = useTaskStore((s) => s.updateTask);
   const deleteTask = useTaskStore((s) => s.deleteTask);
-  const restoreTask = useTaskStore((s) => s.restoreTask);
 
   const [title, setTitle] = useState(task?.title ?? '');
   const [notes, setNotes] = useState(task?.notes ?? '');
@@ -127,8 +126,7 @@ export function TaskForm({ task, prefillCategoryId, prefillDue }: TaskFormProps)
       };
       let succeeded = false;
       if (isEdit && task) {
-        await updateTask(task.id, input);
-        succeeded = true;
+        succeeded = await updateTask(task.id, input);
       } else {
         const id = await addTask(input);
         succeeded = id !== null;
@@ -139,20 +137,18 @@ export function TaskForm({ task, prefillCategoryId, prefillDue }: TaskFormProps)
         haptic.success();
         showToast(isEdit ? 'Task updated' : 'Task added', { type: 'success' });
         // Give the success animation a moment before closing
-        setTimeout(() => router.back(), 450);
+        setTimeout(() => router.back(), 250);
       } else {
         // addTask returned null (error already reported inside store)
         setSaveStatus('error');
         haptic.error();
         shakeField(saveShakeX);
-        setTimeout(() => setSaveStatus('idle'), 1500);
       }
     } catch (error) {
-      logError('TaskForm.save', error);
+      reportError(error, { context: 'TaskForm.save', userMessage: "Couldn't save your task", retry: () => { void handleSave(); } });
       setSaveStatus('error');
       haptic.error();
       shakeField(saveShakeX);
-      setTimeout(() => setSaveStatus('idle'), 1500);
     }
   }
 
@@ -167,13 +163,7 @@ export function TaskForm({ task, prefillCategoryId, prefillDue }: TaskFormProps)
     if (!ok) return;
     haptic.medium();
     const snapshot = await deleteTask(task.id);
-    router.back();
-    if (snapshot) {
-      showToast('Task deleted', {
-        label: 'Undo',
-        onPress: () => restoreTask(snapshot),
-      });
-    }
+    if (snapshot) router.back();
   }
 
   const titleLen = title.length;

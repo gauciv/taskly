@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, memo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { SharedValue } from 'react-native-reanimated';
@@ -16,15 +16,17 @@ interface SwipeableTaskCardProps {
   onToggle: () => void;
   onDelete: () => void;
   index?: number;
+  enteringEnabled?: boolean;
 }
 
-export function SwipeableTaskCard({
+function SwipeableTaskCardInner({
   task,
   category,
   onPress,
   onToggle,
   onDelete,
   index,
+  enteringEnabled,
 }: SwipeableTaskCardProps) {
   const swipeRef = useRef<SwipeableMethods>(null);
 
@@ -69,11 +71,19 @@ export function SwipeableTaskCard({
           onPress={onPress}
           onToggle={onToggle}
           index={index}
+          enteringEnabled={enteringEnabled}
         />
       </ReanimatedSwipeable>
     </View>
   );
 }
+
+export const SwipeableTaskCard = memo(SwipeableTaskCardInner, (previous, next) =>
+  previous.task === next.task &&
+  previous.category === next.category &&
+  previous.index === next.index &&
+  previous.enteringEnabled === next.enteringEnabled
+);
 
 const styles = StyleSheet.create({
   wrap: {

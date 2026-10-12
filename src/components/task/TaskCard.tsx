@@ -4,11 +4,13 @@ import { Feather } from '@expo/vector-icons';
 import Animated, {
   FadeInDown,
   FadeOutLeft,
+  LinearTransition,
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   withSequence,
   withSpring,
+  runOnJS,
 } from 'react-native-reanimated';
 import { Colors, Spacing, Radii, tintedFill } from '@/theme/tokens';
 import { Task, Category } from '@/types';
@@ -28,11 +30,13 @@ interface TaskCardProps {
   onPress: () => void;
   onToggle: () => void;
   index?: number;
+  enteringEnabled?: boolean;
 }
 
-function TaskCardInner({ task, category, onPress, onToggle, index = 0 }: TaskCardProps) {
-  const dueLabel = formatDueLabel(task);
+function TaskCardInner({ task: taskInput, category, onPress, onToggle, index = 0, enteringEnabled = true }: TaskCardProps) {
+  const task = useTaskStore((s) => s.tasksById[taskInput.id]) ?? taskInput;
   const dueStatus = getDueStatus(task);
+  const dueLabel = task.completed ? 'Completed' : formatDueLabel(task);
   const dueColor = dueStatus.tone;
   const cardBg = task.completed && category
     ? tintedFill(category.color)
@@ -41,10 +45,9 @@ function TaskCardInner({ task, category, onPress, onToggle, index = 0 }: TaskCar
   const delay = Math.min(index, 6) * 40;
 
   // Highlight pulse (arrival animation on add/edit/restore)
-  const highlightTaskId = useTaskStore((s) => s.highlightTaskId);
-  const highlightNonce  = useTaskStore((s) => s.highlightNonce);
+  const isHighlighted = useTaskStore((s) => s.highlightTaskId === task.id);
+  const highlightNonce = useTaskStore((s) => s.highlightTaskId === task.id ? s.highlightNonce : 0);
   const setHighlight    = useTaskStore((s) => s.setHighlight);
-  const isHighlighted   = highlightTaskId === task.id;
   const borderOpacity   = useSharedValue(0);
   const cardScale       = useSharedValue(1);
 
@@ -52,15 +55,16 @@ function TaskCardInner({ task, category, onPress, onToggle, index = 0 }: TaskCar
     if (!isHighlighted) return;
     // Pulse: lime border fade in/out + scale nudge
     borderOpacity.value = withSequence(
-      withTiming(1, { duration: 200 }),
-      withTiming(0, { duration: 800 }),
+      withTiming(1, { duration: 250 }),
+      withTiming(0, { duration: 950 }, (finished) => {
+        if (finished) runOnJS(setHighlight)(null);
+      }),
     );
     cardScale.value = withSequence(
       withSpring(1.02, { damping: 14, stiffness: 280 }),
       withSpring(1,    { damping: 14, stiffness: 280 }),
     );
-    const t = setTimeout(() => setHighlight(null), 1300);
-    return () => clearTimeout(t);
+    return undefined;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHighlighted, highlightNonce]);
 
@@ -76,8 +80,9 @@ function TaskCardInner({ task, category, onPress, onToggle, index = 0 }: TaskCar
   // PressableScale owns the press-scale transform ONLY — no layout prop.
   return (
     <Animated.View
-      entering={FadeInDown.delay(delay).duration(220)}
+      entering={enteringEnabled ? FadeInDown.delay(delay).duration(220) : undefined}
       exiting={FadeOutLeft.duration(180)}
+      layout={LinearTransition.duration(220)}
     >
       <Animated.View style={scaleStyle}>
         <View style={styles.highlightFrame}>
@@ -124,7 +129,12 @@ function TaskCardInner({ task, category, onPress, onToggle, index = 0 }: TaskCar
   );
 }
 
-export const TaskCard = memo(TaskCardInner);
+export const TaskCard = memo(TaskCardInner, (previous, next) =>
+  previous.task.id === next.task.id &&
+  previous.category === next.category &&
+  previous.index === next.index &&
+  previous.enteringEnabled === next.enteringEnabled
+);
 
 const styles = StyleSheet.create({
   highlightFrame: { position: 'relative', borderRadius: Radii.taskCard },

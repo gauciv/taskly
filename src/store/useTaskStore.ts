@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { InteractionManager } from 'react-native';
 import { Task, TaskInput, TaskSnapshot, Category } from '@/types';
 import {
   getAllTasks,
@@ -13,17 +14,31 @@ import {
   cancelTaskNotification,
 } from '@/services/notifications';
 import { reportError } from '@/utils/errors';
-import { logError } from '@/utils/logger';
+import { onTaskCompleted, onTaskUncompleted } from '@/services/feedback';
+import { haptic } from '@/utils/feedback';
+import { showToast } from '@/components/ui/Toast';
+
+interface RecentToggle { expiresAt: number; previousCompleted: boolean }
+function taskCollection(tasks: Task[]) {
+  return {
+    tasks,
+    tasksById: Object.fromEntries(tasks.map((task) => [task.id, task])) as Record<number, Task>,
+    orderedTaskIds: tasks.map((task) => task.id),
+  };
+}
 
 interface TaskStore {
   tasks: Task[];
+  tasksById: Record<number, Task>;
+  orderedTaskIds: number[];
+  recentlyToggledIds: Record<number, RecentToggle>;
   categories: Category[];
   hydrated: boolean;
   highlightTaskId: number | null;
   highlightNonce: number;
   hydrate: () => Promise<void>;
   addTask: (input: TaskInput) => Promise<number | null>;
-  updateTask: (id: number, patch: Partial<TaskInput> & { notificationId?: string | null }) => Promise<void>;
+  updateTask: (id: number, patch: Partial<TaskInput> & { notificationId?: string | null }) => Promise<boolean>;
   toggleComplete: (id: number, originX?: number, originY?: number) => Promise<void>;
   deleteTask: (id: number) => Promise<TaskSnapshot | null>;
   restoreTask: (snapshot: TaskSnapshot) => Promise<void>;
@@ -37,6 +52,9 @@ interface TaskStore {
 
 export const useTaskStore = create<TaskStore>((set, get) => ({
   tasks: [],
+  tasksById: {},
+  orderedTaskIds: [],
+  recentlyToggledIds: {},
   categories: [],
   hydrated: false,
   highlightTaskId: null,
@@ -44,7 +62,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
   hydrate: async () => {
     const [tasks, categories] = await Promise.all([getAllTasks(), getAllCategories()]);
-    set({ tasks, categories, hydrated: true });
+    set({ ...taskCollection(tasks), categories, hydrated: true });
   },
 
   setHighlight: (id) => {
@@ -54,12 +72,18 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
   addTask: async (input) => {
     try {
       const task = await insertTask(input);
-      set((s) => ({ tasks: [task, ...s.tasks], highlightTaskId: task.id, highlightNonce: s.highlightNonce + 1 }));
-      await syncTaskNotification(task);
-      try {
-        const { useNotificationStore } = await import('./useNotificationStore');
-        await useNotificationStore.getState().syncInbox(Date.now());
-      } catch (err) { logError('tasks.add.syncInbox', err); }
+      set((s) => ({ ...taskCollection([task, ...s.tasks]), highlightTaskId: task.id, highlightNonce: s.highlightNonce + 1 }));
+      InteractionManager.runAfterInteractions(() => {
+        void (async () => {
+          try {
+            await syncTaskNotification(task);
+            const { useNotificationStore } = await import('./useNotificationStore');
+            await useNotificationStore.getState().syncInbox(Date.now());
+          } catch (err) {
+            reportError(err, { context: 'addTask.notifications', userMessage: 'Task saved, but its reminder could not be updated' });
+          }
+        })();
+      });
       return task.id;
     } catch (err) {
       reportError(err, { context: 'addTask', userMessage: "Couldn't save your task", retry: () => get().addTask(input) });
@@ -69,20 +93,28 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
   updateTask: async (id, patch) => {
     const prev = get().tasks.find((t) => t.id === id);
-    if (!prev) return;
+    if (!prev) return false;
     const optimistic: Task = { ...prev, ...patch, updatedAt: Date.now() } as Task;
-    set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? optimistic : t)) }));
+    set((s) => ({ ...taskCollection(s.tasks.map((t) => (t.id === id ? optimistic : t))) }));
     try {
       const updated = await updateTask(id, patch);
-      set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? updated : t)), highlightTaskId: id, highlightNonce: s.highlightNonce + 1 }));
-      await syncTaskNotification(updated);
-      try {
-        const { useNotificationStore } = await import('./useNotificationStore');
-        await useNotificationStore.getState().syncInbox(Date.now());
-      } catch (err) { logError('tasks.update.syncInbox', err); }
+      set((s) => ({ ...taskCollection(s.tasks.map((t) => (t.id === id ? updated : t))), highlightTaskId: id, highlightNonce: s.highlightNonce + 1 }));
+      InteractionManager.runAfterInteractions(() => {
+        void (async () => {
+          try {
+            await syncTaskNotification(updated);
+            const { useNotificationStore } = await import('./useNotificationStore');
+            await useNotificationStore.getState().syncInbox(Date.now());
+          } catch (err) {
+            reportError(err, { context: 'updateTask.notifications', userMessage: 'Task saved, but its reminder could not be updated' });
+          }
+        })();
+      });
+      return true;
     } catch (err) {
-      set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? prev : t)) }));
+      set((s) => ({ ...taskCollection(s.tasks.map((t) => (t.id === id ? prev : t))) }));
       reportError(err, { context: 'updateTask', userMessage: "Couldn't save your task", retry: () => get().updateTask(id, patch) });
+      return false;
     }
   },
 
@@ -91,62 +123,93 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     if (!task) return;
     const now = Date.now();
     const completed = !task.completed;
+    haptic.light();
     const patch = { completed, completedAt: completed ? now : null };
     const optimistic: Task = { ...task, ...patch, updatedAt: now };
-    set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? optimistic : t)) }));
-    try {
-      const updated = await updateTask(id, patch);
-      set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? updated : t)) }));
-      if (completed) {
-        await cancelTaskNotification(updated);
-        try {
-          const { useNotificationStore } = await import('./useNotificationStore');
-          await useNotificationStore.getState().markReadForTask(id);
-        } catch (err) { logError('tasks.complete.markRead', err); }
-        // Fire celebration/feedback
-        const { onTaskCompleted } = await import('@/services/feedback');
-        await onTaskCompleted(optimistic, get().tasks, originX, originY, () => {
-          // Undo: un-complete the task
-          get().toggleComplete(id);
-        });
-      } else {
-        await syncTaskNotification(updated);
-        const { onTaskUncompleted } = await import('@/services/feedback');
-        onTaskUncompleted(updated, () => {
-          // Undo: re-complete the task
-          get().toggleComplete(id);
-        });
-      }
-    } catch (err) {
-      set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? task : t)) }));
-      reportError(err, { context: 'toggleComplete', userMessage: "Couldn't save. Try again", retry: () => get().toggleComplete(id) });
+    const expiresAt = now + 700;
+    set((s) => ({
+      ...taskCollection(s.tasks.map((t) => (t.id === id ? optimistic : t))),
+      recentlyToggledIds: { ...s.recentlyToggledIds, [id]: { expiresAt, previousCompleted: task.completed } },
+    }));
+    setTimeout(() => {
+      set((s) => {
+        const entry = s.recentlyToggledIds[id];
+        if (!entry || entry.expiresAt !== expiresAt) return {};
+        const next = { ...s.recentlyToggledIds };
+        delete next[id];
+        return { recentlyToggledIds: next };
+      });
+    }, 700);
+
+    if (completed) {
+      onTaskCompleted(optimistic, get().tasks, originX, originY, () => { void get().toggleComplete(id); });
+    } else {
+      onTaskUncompleted(optimistic, () => { void get().toggleComplete(id); });
     }
+
+    InteractionManager.runAfterInteractions(() => {
+      void (async () => {
+        let updated: Task;
+        try {
+          updated = await updateTask(id, patch);
+        } catch (err) {
+          set((s) => s.tasksById[id] === optimistic
+            ? { ...taskCollection(s.tasks.map((t) => (t.id === id ? task : t))) }
+            : {});
+          reportError(err, { context: 'toggleComplete', userMessage: "Couldn't save. Try again", retry: () => { void get().toggleComplete(id); } });
+          return;
+        }
+        set((s) => ({ ...taskCollection(s.tasks.map((t) => (t.id === id && t === optimistic ? updated : t))) }));
+        try {
+          if (completed) {
+            await cancelTaskNotification(updated);
+            const { useNotificationStore } = await import('./useNotificationStore');
+            await useNotificationStore.getState().markReadForTask(id);
+            await useNotificationStore.getState().syncInbox(Date.now());
+          } else {
+            await syncTaskNotification(updated);
+            const { useNotificationStore } = await import('./useNotificationStore');
+            await useNotificationStore.getState().syncInbox(Date.now());
+          }
+        } catch (err) {
+          reportError(err, { context: 'toggleComplete.notifications', userMessage: 'Task saved, but its reminder could not be updated' });
+        }
+      })();
+    });
   },
 
   deleteTask: async (id) => {
     const snapshot = get().tasks.find((t) => t.id === id) ?? null;
     if (!snapshot) return null;
-    set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }));
+    set((s) => ({ ...taskCollection(s.tasks.filter((t) => t.id !== id)) }));
+    showToast('Task deleted', { label: 'Undo', onPress: () => { void get().restoreTask(snapshot); } });
     try {
       await dbDeleteTask(id);
-      await cancelTaskNotification(snapshot);
     } catch (err) {
-      set((s) => ({ tasks: [snapshot, ...s.tasks] }));
+      set((s) => ({ ...taskCollection([snapshot, ...s.tasks]) }));
       reportError(err, { context: 'deleteTask', userMessage: "Couldn't delete. Try again", retry: () => get().deleteTask(id) });
       return null;
     }
+    InteractionManager.runAfterInteractions(() => {
+      void cancelTaskNotification(snapshot).catch((err: unknown) => {
+        reportError(err, { context: 'deleteTask.notifications', userMessage: 'Task deleted, but its reminder could not be cancelled' });
+      });
+    });
     return snapshot;
   },
 
   restoreTask: async (snapshot) => {
-    set((s) => ({ tasks: [snapshot, ...s.tasks], highlightTaskId: snapshot.id, highlightNonce: s.highlightNonce + 1 }));
+    set((s) => ({ ...taskCollection([snapshot, ...s.tasks]), highlightTaskId: snapshot.id, highlightNonce: s.highlightNonce + 1 }));
     try {
       await insertTaskWithId(snapshot);
-      await syncTaskNotification(snapshot);
     } catch (err) {
-      set((s) => ({ tasks: s.tasks.filter((t) => t.id !== snapshot.id) }));
+      set((s) => ({ ...taskCollection(s.tasks.filter((t) => t.id !== snapshot.id)) }));
       reportError(err, { context: 'restoreTask', userMessage: "Couldn't restore. Try again", retry: () => get().restoreTask(snapshot) });
+      return;
     }
+    InteractionManager.runAfterInteractions(() => {
+      void syncTaskNotification(snapshot).catch((err: unknown) => reportError(err, { context: 'restoreTask.notifications', userMessage: 'Task restored, but its reminder could not be scheduled' }));
+    });
   },
 
   addCategory: async ({ name, color, icon }) => {
@@ -160,15 +223,24 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
   clearCompleted: async () => {
     const completed = get().tasks.filter((t) => t.completed);
-    set((s) => ({ tasks: s.tasks.filter((t) => !t.completed) }));
+    set((s) => ({ ...taskCollection(s.tasks.filter((t) => !t.completed)) }));
     try {
       const db = await import('@/db/client').then((m) => m.getDb());
       await (await db).execAsync('DELETE FROM tasks WHERE completed = 1');
-      for (const t of completed) await cancelTaskNotification(t);
     } catch (err) {
-      set((s) => ({ tasks: [...s.tasks, ...completed] }));
+      set((s) => ({ ...taskCollection([...s.tasks, ...completed]) }));
       reportError(err, { context: 'clearCompleted', userMessage: "Couldn't clear. Try again", retry: () => get().clearCompleted() });
+      return;
     }
+    InteractionManager.runAfterInteractions(() => {
+      void (async () => {
+        try {
+          for (const task of completed) await cancelTaskNotification(task);
+        } catch (err) {
+          reportError(err, { context: 'clearCompleted.notifications', userMessage: 'Tasks cleared, but some reminders could not be cancelled' });
+        }
+      })();
+    });
   },
 
   resetAll: async () => {
@@ -180,11 +252,11 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       await (await db).execAsync("DELETE FROM settings WHERE key != 'onboarded'");
       await import('@/db/migrations').then((m) => m.runMigrations());
       const [tasks, categories] = await Promise.all([getAllTasks(), getAllCategories()]);
-      set({ tasks, categories });
+      set({ ...taskCollection(tasks), categories });
       try {
         const { useNotificationStore } = await import('./useNotificationStore');
         useNotificationStore.setState({ items: [], unreadCount: 0 });
-      } catch (err) { logError('tasks.reset.clearNotifications', err); }
+      } catch (err) { reportError(err, { context: 'resetAll.notifications', userMessage: 'Data reset, but notifications could not be refreshed' }); }
     } catch (err) {
       reportError(err, { context: 'resetAll', userMessage: "Couldn't reset app data. Try again", retry: () => get().resetAll() });
     }

@@ -1,10 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import {
   View,
   StyleSheet,
   ScrollView,
   Pressable,
   RefreshControl,
+  AppState,
 } from 'react-native';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { router } from 'expo-router';
@@ -30,6 +31,7 @@ import {
 import { taskDetailsHref, notificationsHref } from '@/utils/routes';
 import { usePullRefresh } from '@/hooks/usePullRefresh';
 import type { Category } from '@/types';
+import { startOfDay } from 'date-fns';
 
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
 
@@ -45,15 +47,27 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const tasks = useTaskStore((s) => s.tasks);
   const categories = useTaskStore((s) => s.categories);
+  const recentlyToggledIds = useTaskStore((s) => s.recentlyToggledIds);
   const toggleComplete = useTaskStore((s) => s.toggleComplete);
   const userName = useSettingsStore((s) => s.userName);
+  const [enteringEnabled, setEnteringEnabled] = useState(true);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setTimeout(() => setEnteringEnabled(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setNowMs(Date.now());
+    });
+    return () => sub.remove();
+  }, []);
+  const currentDay = startOfDay(new Date(nowMs)).getTime();
 
-  const todayTasks = useMemo(() => selectTodayAndOverdue(tasks), [tasks]);
+  const todayTasks = useMemo(() => selectTodayAndOverdue(tasks, nowMs, recentlyToggledIds), [tasks, recentlyToggledIds, nowMs]);
   const catCounts = useMemo(() => selectOpenCountByCategory(tasks, categories), [tasks, categories]);
-  // eslint-disable-next-line react-hooks/purity
-  const weeklyActivity = useMemo(() => selectWeeklyActivity(tasks, Date.now()), [tasks]);
-  // eslint-disable-next-line react-hooks/purity
-  const streak = useMemo(() => selectStreak(tasks, Date.now()), [tasks]);
+  const weeklyActivity = useMemo(() => selectWeeklyActivity(tasks, currentDay), [tasks, currentDay]);
+  const streak = useMemo(() => selectStreak(tasks, currentDay), [tasks, currentDay]);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   const hasTasks = tasks.length > 0;
   const topCats = catCounts.slice(0, 6);
@@ -165,6 +179,7 @@ export default function HomeScreen() {
                     onPress={() => router.push(taskDetailsHref(task.id))}
                     onToggle={() => toggleComplete(task.id)}
                     index={i}
+                    enteringEnabled={enteringEnabled}
                   />
                 </View>
               ))}

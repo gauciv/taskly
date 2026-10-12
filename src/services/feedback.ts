@@ -4,12 +4,13 @@
  * Coalesces rapid completions (at most 2 small default bursts concurrently).
  * Respects celebrations_enabled and reduced-motion settings.
  */
+import { InteractionManager } from 'react-native';
 import { startOfDay } from 'date-fns';
 import { Task } from '@/types';
 import { getDueStatus } from '@/utils/dueStatus';
 import { showToast } from '@/components/ui/Toast';
 import { haptic } from '@/utils/feedback';
-import { logError } from '@/utils/logger';
+import { reportError } from '@/utils/errors';
 
 const CONTEXTUAL_MESSAGES = [
   'Nice work!',
@@ -30,10 +31,6 @@ function nextContextual(): string {
   return CONTEXTUAL_MESSAGES[idx];
 }
 
-// Track small burst count to coalesce rapid completions (max 2 concurrent)
-let activeBursts = 0;
-const MAX_BURSTS = 2;
-
 // Track all-done celebration per day
 function todayKey(): string {
   return String(startOfDay(new Date()).getTime());
@@ -43,7 +40,8 @@ async function getLastAllDoneDay(): Promise<string> {
   try {
     const { getSetting } = await import('@/db/settingsRepo');
     return (await getSetting('last_all_done_day')) ?? '';
-  } catch {
+  } catch (error) {
+    reportError(error, { context: 'feedback.readAllDoneDay', userMessage: 'Task completed, but reward progress could not be loaded' });
     return '';
   }
 }
@@ -53,14 +51,41 @@ async function setLastAllDoneDay(key: string): Promise<void> {
     const { setSetting } = await import('@/db/settingsRepo');
     await setSetting('last_all_done_day', key);
   } catch (error) {
-    logError('feedback.persistAllDoneDay', error);
+    reportError(error, { context: 'feedback.persistAllDoneDay', userMessage: 'Task completed, but the daily reward could not be saved' });
   }
 }
 
 // Track streak milestones celebrated to avoid repeating
 const celebratedStreakLengths = new Set<number>();
 
-export async function onTaskCompleted(
+export function onTaskCompleted(
+  task: Task,
+  allTasks: Task[],
+  originX?: number,
+  originY?: number,
+  onUndo?: () => void,
+): void {
+  const now = Date.now();
+  let message: string;
+  if (task.dueAt !== null && getDueStatus({ ...task, completed: false }, now).kind === 'overdue') {
+    message = 'Back on track!';
+  } else if (task.completedAt !== null && task.dueAt !== null && task.completedAt < task.dueAt) {
+    message = 'Ahead of schedule!';
+  } else if (task.priority === 2) {
+    message = 'High priority cleared!';
+  } else {
+    message = nextContextual();
+  }
+  showToast(message, {
+    type: 'success',
+    action: onUndo ? { label: 'Undo', onPress: onUndo } : undefined,
+  });
+  InteractionManager.runAfterInteractions(() => {
+    void evaluateTaskCompletion(task, allTasks, originX, originY, onUndo);
+  });
+}
+
+async function evaluateTaskCompletion(
   task: Task,
   allTasks: Task[],
   originX?: number,
@@ -84,8 +109,7 @@ export async function onTaskCompleted(
       const def = ACHIEVEMENTS.find((a) => a.id === id);
       if (def) {
         // Persist unlock
-        await settings.unlockAchievement(id);
-        haptic.success();
+        const persistUnlock = settings.unlockAchievement(id);
         if (!skipCelebrations) {
           useCelebrationStore.getState().celebrate({
             type: 'achievement',
@@ -96,8 +120,9 @@ export async function onTaskCompleted(
             color: def.color,
           });
         } else {
-          showToast(`Achievement: ${def.title}`, { type: 'success' });
+          haptic.success();
         }
+        void persistUnlock.catch((error: unknown) => reportError(error, { context: 'feedback.persistAchievement', userMessage: 'Achievement unlocked, but it could not be saved' }));
         return;
       }
     }
@@ -124,12 +149,11 @@ export async function onTaskCompleted(
       dueTodayTasks.length >= 2 &&
       lastAllDoneDay !== dayKey
     ) {
-      await setLastAllDoneDay(dayKey);
-      haptic.success();
+      void setLastAllDoneDay(dayKey);
       if (!skipCelebrations) {
         useCelebrationStore.getState().celebrate({ type: 'all_done' });
       } else {
-        showToast('All caught up! Everything done for today.', { type: 'success' });
+        haptic.success();
       }
       return;
     }
@@ -142,47 +166,26 @@ export async function onTaskCompleted(
     );
     if (milestone !== undefined) {
       celebratedStreakLengths.add(milestone);
-      haptic.success();
       if (!skipCelebrations) {
         useCelebrationStore.getState().celebrate({ type: 'streak', days: milestone });
       } else {
-        showToast(`${milestone}-day streak!`, { type: 'success' });
+        haptic.success();
       }
       return;
     }
 
-    // 4. Default: small burst + contextual toast
-    haptic.light();
+    // 4. Default: small burst; contextual toast was already shown synchronously.
 
-    if (!skipCelebrations && activeBursts < MAX_BURSTS) {
-      activeBursts++;
+    if (!skipCelebrations) {
       useCelebrationStore.getState().celebrate({
         type: 'default',
         originX,
         originY,
       });
-      setTimeout(() => { activeBursts = Math.max(0, activeBursts - 1); }, 800);
     }
 
-    // Contextual success toast with Undo
-    const undoAction = onUndo ? { label: 'Undo', onPress: onUndo } : undefined;
-    let message: string;
-    if (task.dueAt !== null && getDueStatus({ ...task, completed: false }, now).kind === 'overdue') {
-      message = 'Back on track!';
-    } else if (task.completedAt !== null && task.dueAt !== null && task.completedAt < task.dueAt) {
-      message = 'Ahead of schedule!';
-    } else if (task.priority === 2) {
-      message = 'High priority cleared!';
-    } else {
-      message = nextContextual();
-    }
-
-    showToast(message, {
-      type: 'success',
-      action: undoAction,
-    });
   } catch (err) {
-    logError('onTaskCompleted', err);
+    reportError(err, { context: 'onTaskCompleted', userMessage: 'Task completed, but reward progress could not be updated' });
   }
 }
 
@@ -190,7 +193,6 @@ export function onTaskUncompleted(
   _task: Task,
   retoggle: () => void,
 ): void {
-  haptic.light();
   showToast('Back on your list', {
     type: 'info',
     action: { label: 'Undo', onPress: retoggle },

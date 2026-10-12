@@ -92,13 +92,15 @@ Last updated: 2026-10-11
 - [x] U6.2  Category persistence bug fixed (root cause logged, safe seeding/migrations, read-after-write)
 - [x] U6.3  getDueStatus single source of truth (date-only overdue bug, formatSpan)
 - [x] U6.4  Task Details redesign (hero, due card, info cards, notes, activity timeline, sticky action bar)
-- [ ] U6.5  Feedback latency/jank pass (no awaits before feedback, delayed re-sort, memoized lists, prewarmed confetti)
+- [x] U6.5  Feedback latency/jank pass (no awaits before feedback, delayed re-sort, memoized lists, prewarmed confetti)
 - [ ] U6.6  Final QA, grep checks, README, commit
 - Fix 6 U6.1: animated color alpha formatting can produce scientific notation and fail Reanimated's parser. Use fixed colors with animated opacity for pulses; `withAlpha` is for static tints only.
 - U6.1 root cause confirmed: `TaskCard` interpolated `borderOpacity.value` into an `rgba()` string inside `useAnimatedStyle`; its final near-zero timing frame produced exponent notation. The highlight now overlays a fixed lime border and animates clamped opacity; scale is a separate animated wrapper. Checkbox burst ring uses fixed geometry/color with opacity/scale animation.
 - U6.2 diagnosis: the historical category-null event is not reproducible from this checkout. Startup migration already used an empty-table guard and plain category INSERT; form state, task INSERT parameter order, row mapping, and patch-only UPDATE all preserve the numeric category ID. Hardened the guarded seed into one transaction and made read-after-write failures explicit. No repair is possible for rows whose prior `category_id` is already NULL.
 - U6.3: due state now comes from `getDueStatus`; date-only tasks remain `today` until the local day changes, while timed tasks cross to overdue after their exact timestamp. Day spans use calendar-day differences for DST safety; duration text floors to singular/plural minute, hour, day, or week units. Inbox overdue entries remain delayed by one hour for timed tasks and start of the next local day for date-only tasks.
 - U6.4: Details is now an in-flow column with a scrollable hero/due/info/reminder/notes/activity stack and a sibling safe-area action bar. On short screens the information stack scrolls behind no controls; the 52 px delete target and 56 px primary action remain fixed at the bottom. Date-only due rows explicitly say “All day”.
+- U6.5: Completion now animates/press-scales and haptics before the synchronous optimistic update, then acknowledges immediately; SQLite, reminders, inbox work, and reward evaluation run after interactions. `recentlyToggledIds` holds the previous section/sort state for 700 ms. Task rows use stable IDs, memoized cards, per-ID store subscriptions, and FlatList virtualization; entering motion is disabled after the first 600 ms. Confetti keeps 36 particles mounted and starts a shared UI-thread timing value with `runOnUI`; default bursts stay within an 80 px spread and finish in 700 ms. Success/info toasts replace immediately and errors take priority. Refresh no longer has a minimum spinner delay.
+- U6.5 performance note added to README: compare smoothness on a real device or a minified no-dev run because Expo Go dev mode and software-rendered emulators are slower.
 
 ## Known issues
 (non-blocking bugs or warnings)

@@ -11,7 +11,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
-import { haptic } from '@/utils/feedback';
 import { useMotionPrefs } from '@/hooks/useMotionPrefs';
 import { Colors } from '@/theme/tokens';
 
@@ -87,6 +86,7 @@ export function AnimatedCheckbox({
 }: AnimatedCheckboxProps) {
   const progress = useSharedValue(checked ? 1 : 0);
   const scale = useSharedValue(1);
+  const pressScale = useSharedValue(1);
   const burstProgress = useSharedValue(0);
   const { reduceMotion } = useMotionPrefs();
 
@@ -116,11 +116,14 @@ export function AnimatedCheckbox({
   const boxStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(progress.value, [0, 1], ['transparent', Colors.lime]),
     borderColor: interpolateColor(progress.value, [0, 1], [Colors.textFaint, Colors.lime]),
-    transform: [{ scale: scale.value }],
+    transform: [{ scale: scale.value * pressScale.value }],
   }));
 
   function handlePress() {
-    haptic.light();
+    pressScale.value = withSequence(
+      withTiming(0.96, { duration: 40 }),
+      withSpring(1, { damping: 18, stiffness: 300 }),
+    );
     runOnJS(onToggle)();
   }
 

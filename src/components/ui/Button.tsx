@@ -28,6 +28,7 @@ interface ButtonProps {
   style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
   status?: ButtonStatus;
+  haptic?: boolean;
 }
 
 const variantConfig: Record<Variant, { bg: string; textColor: string; borderColor?: string }> = {
@@ -54,6 +55,7 @@ export function Button({
   style,
   accessibilityLabel,
   status = 'idle',
+  haptic = true,
 }: ButtonProps) {
   const vc = variantConfig[variant];
   const sc = sizeConfig[size];
@@ -104,7 +106,7 @@ export function Button({
 
   return (
     <PressableScale
-      haptic
+      haptic={haptic}
       onPress={onPress}
       disabled={isDisabled}
       accessibilityLabel={accessibilityLabel ?? label}

@@ -13,7 +13,7 @@ import {
   clearAllNotifications,
 } from '@/db/notificationsRepo';
 import { getSetting } from '@/db/settingsRepo';
-import { showToast } from '@/components/ui/Toast';
+import { reportError } from '@/utils/errors';
 
 export type { NotificationRow };
 
@@ -182,10 +182,10 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     });
     try {
       await markNotificationRead(id);
-    } catch {
-      // revert
+    } catch (error) {
       const items = await getAllNotifications();
       set({ items, unreadCount: countUnread(items) });
+      reportError(error, { context: 'notification.markRead', userMessage: "Couldn't mark notification as read", retry: () => get().markRead(id) });
     }
   },
 
@@ -197,9 +197,10 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     });
     try {
       await markAllNotificationsRead();
-    } catch {
+    } catch (error) {
       const items = await getAllNotifications();
       set({ items, unreadCount: countUnread(items) });
+      reportError(error, { context: 'notification.markAllRead', userMessage: "Couldn't mark notifications as read", retry: () => get().markAllRead() });
     }
   },
 
@@ -212,9 +213,10 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     });
     try {
       await dbMarkReadForTask(taskId);
-    } catch {
+    } catch (error) {
       const items = await getAllNotifications();
       set({ items, unreadCount: countUnread(items) });
+      reportError(error, { context: 'notification.markReadForTask', userMessage: "Couldn't update notifications", retry: () => get().markReadForTask(taskId) });
     }
   },
 
@@ -228,12 +230,12 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     });
     try {
       await deleteNotification(id);
-    } catch {
+    } catch (error) {
       set((s) => {
         const items = [snapshot, ...s.items].sort((a, b) => b.fireAt - a.fireAt);
         return { items, unreadCount: countUnread(items) };
       });
-      showToast("Couldn't remove notification.");
+      reportError(error, { context: 'notification.remove', userMessage: "Couldn't remove notification", retry: () => get().remove(id) });
       return null;
     }
     return snapshot;
@@ -246,11 +248,12 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     });
     try {
       await insertNotification(snapshot);
-    } catch {
+    } catch (error) {
       set((s) => {
         const items = s.items.filter((n) => n.id !== snapshot.id);
         return { items, unreadCount: countUnread(items) };
       });
+      reportError(error, { context: 'notification.restore', userMessage: "Couldn't restore notification", retry: () => get().restore(snapshot) });
     }
   },
 
@@ -259,9 +262,9 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     set({ items: [], unreadCount: 0 });
     try {
       await clearAllNotifications();
-    } catch {
+    } catch (error) {
       set({ items: prev, unreadCount: countUnread(prev) });
-      showToast("Couldn't clear notifications.");
+      reportError(error, { context: 'notification.clear', userMessage: "Couldn't clear notifications", retry: () => get().clearAll() });
     }
   },
 }));

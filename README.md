@@ -42,6 +42,10 @@ Scan the QR code with **Expo Go** (iOS or Android). Your phone and computer must
 npx expo start --tunnel
 ```
 
+## Performance notes
+
+Test smoothness on a real device or with `npx expo start --no-dev --minify`; emulators with software rendering and Expo Go dev mode run slower than a release build.
+
 ## Folder structure
 
 ```

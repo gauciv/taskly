@@ -7,6 +7,8 @@ import {
   ScrollView,
   Platform,
   RefreshControl,
+  ListRenderItem,
+  AppState,
 } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -22,12 +24,17 @@ import { Button } from '@/components/ui/Button';
 import { SwipeableTaskCard } from '@/components/task/SwipeableTaskCard';
 import { FilterSheet } from '@/components/task/FilterSheet';
 import { useTaskStore } from '@/store/useTaskStore';
-import { showToast } from '@/components/ui/Toast';
 import { selectSortedTasks } from '@/store/selectors';
 import { taskDetailsHref } from '@/utils/routes';
 import { getDueStatus } from '@/utils/dueStatus';
 import { useTaskFilters, type StatusFilter } from '@/store/useTaskFilters';
 import { usePullRefresh } from '@/hooks/usePullRefresh';
+
+type TaskListEntry =
+  | { type: 'activeHeader'; key: string; count: number }
+  | { type: 'completedHeader'; key: string; count: number; collapsed: boolean }
+  | { type: 'empty'; key: string }
+  | { type: 'task'; key: string; taskId: number; index: number };
 
 const STATUS_OPTIONS: { label: string; value: StatusFilter }[] = [
   { label: 'All', value: 'all' },
@@ -43,9 +50,7 @@ export default function TasksScreen() {
 
   const tasks = useTaskStore((s) => s.tasks);
   const categories = useTaskStore((s) => s.categories);
-  const toggleComplete = useTaskStore((s) => s.toggleComplete);
-  const deleteTask = useTaskStore((s) => s.deleteTask);
-  const restoreTask = useTaskStore((s) => s.restoreTask);
+  const recentlyToggledIds = useTaskStore((s) => s.recentlyToggledIds);
 
   const { query, status, categoryId, priority, setQuery, setStatus, setCategoryId, setPriority, clearAll } =
     useTaskFilters();
@@ -53,9 +58,22 @@ export default function TasksScreen() {
   const [searchRaw, setSearchRaw] = useState(query);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [completedCollapsed, setCompletedCollapsed] = useState(true);
+  const [enteringEnabled, setEnteringEnabled] = useState(true);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { refreshing, onRefresh } = usePullRefresh();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setEnteringEnabled(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setNowMs(Date.now());
+    });
+    return () => sub.remove();
+  }, []);
 
   // Apply route params on mount/change
   useEffect(() => {
@@ -83,7 +101,7 @@ export default function TasksScreen() {
     clearAll();
   }
 
-  const sorted = useMemo(() => selectSortedTasks(tasks), [tasks]);
+  const sorted = useMemo(() => selectSortedTasks(tasks, nowMs, recentlyToggledIds), [tasks, recentlyToggledIds, nowMs]);
 
   const applyFilters = useCallback(
     (list: Task[], q: string, s: StatusFilter, catId: number | null, pri: string) => {
@@ -98,15 +116,25 @@ export default function TasksScreen() {
           );
         });
       }
-      if (s === 'active') list = list.filter((t) => !t.completed);
-      if (s === 'completed') list = list.filter((t) => t.completed);
-      if (s === 'today') list = list.filter((task) => getDueStatus(task).kind === 'today');
-      if (s === 'overdue') list = list.filter((task) => getDueStatus(task).kind === 'overdue');
+      const isCompletedForSort = (task: Task) => {
+        const recent = recentlyToggledIds[task.id];
+        return recent && recent ? recent.previousCompleted : task.completed;
+      };
+      if (s === 'active') list = list.filter((t) => !isCompletedForSort(t));
+      if (s === 'completed') list = list.filter((t) => isCompletedForSort(t));
+      if (s === 'today' || s === 'overdue') {
+        list = list.filter((task) => {
+          const recent = recentlyToggledIds[task.id];
+          const statusTask = recent && !recent.previousCompleted ? { ...task, completed: false } : task;
+          const kind = getDueStatus(statusTask, nowMs).kind;
+          return s === 'today' ? kind === 'today' : kind === 'overdue';
+        });
+      }
       if (catId !== null) list = list.filter((t) => t.categoryId === catId);
       if (pri !== 'all') list = list.filter((t) => String(t.priority) === pri);
       return list;
     },
-    [categories]
+    [categories, recentlyToggledIds, nowMs]
   );
 
   const filtered = useMemo(
@@ -117,24 +145,19 @@ export default function TasksScreen() {
   // Count for the sheet "Show N tasks" button — reflects sheet selections live
   const sheetMatchCount = filtered.length;
 
-  const active = useMemo(() => filtered.filter((t) => !t.completed), [filtered]);
-  const completed = useMemo(() => filtered.filter((t) => t.completed), [filtered]);
+  const active = useMemo(() => filtered.filter((t) => {
+    const recent = recentlyToggledIds[t.id];
+    return !(recent && recent ? recent.previousCompleted : t.completed);
+  }), [filtered, recentlyToggledIds]);
+  const completed = useMemo(() => filtered.filter((t) => {
+    const recent = recentlyToggledIds[t.id];
+    return recent && recent ? recent.previousCompleted : t.completed;
+  }), [filtered, recentlyToggledIds]);
 
   function getCat(id: number | null) {
     return id ? categories.find((c) => c.id === id) : undefined;
   }
 
-  const handleDelete = useCallback(
-    async (id: number) => {
-      const snapshot = await deleteTask(id);
-      if (snapshot) {
-        showToast('Task deleted', { label: 'Undo', onPress: () => restoreTask(snapshot) });
-      }
-    },
-    [deleteTask, restoreTask]
-  );
-
-  const handleToggle = useCallback((id: number) => toggleComplete(id), [toggleComplete]);
 
   // Active filter pill count (category + priority only; status lives in the chips row)
   const activePillCount = useMemo(() => {
@@ -147,6 +170,35 @@ export default function TasksScreen() {
   const hasFiltersOrSearch = query || status !== 'all' || categoryId !== null || priority !== 'all';
   const noResults = filtered.length === 0 && !!hasFiltersOrSearch;
   const hasTasks = tasks.length > 0;
+  const listEntries = useMemo<TaskListEntry[]>(() => {
+    const entries: TaskListEntry[] = [{ type: 'activeHeader', key: 'active-header', count: active.length }];
+    if (active.length === 0) entries.push({ type: 'empty', key: 'empty-active' });
+    else active.forEach((task, index) => entries.push({ type: 'task', key: `active-${task.id}`, taskId: task.id, index }));
+    if (completed.length > 0) {
+      entries.push({ type: 'completedHeader', key: 'completed-header', count: completed.length, collapsed: completedCollapsed });
+      if (!completedCollapsed) completed.forEach((task, index) => entries.push({ type: 'task', key: `completed-${task.id}`, taskId: task.id, index }));
+    }
+    return entries;
+  }, [active, completed, completedCollapsed]);
+
+  const renderListItem = useCallback<ListRenderItem<TaskListEntry>>(({ item }) => {
+    if (item.type === 'activeHeader') {
+      return <View style={styles.sectionHeader}><AppText variant="label" color={Colors.textMuted}>Active ({item.count})</AppText></View>;
+    }
+    if (item.type === 'completedHeader') {
+      return (
+        <TouchableOpacity style={styles.sectionHeader} onPress={() => setCompletedCollapsed((value) => !value)}>
+          <AppText variant="label" color={Colors.textMuted}>Completed ({item.count})</AppText>
+          <Feather name={item.collapsed ? 'chevron-down' : 'chevron-up'} size={16} color={Colors.textFaint} />
+        </TouchableOpacity>
+      );
+    }
+    if (item.type === 'empty') {
+      return <AppText variant="body" color={Colors.textFaint} style={styles.emptyLine}>No active tasks</AppText>;
+    }
+    return <TaskListRow taskId={item.taskId} index={item.index} enteringEnabled={enteringEnabled} />;
+  }, [enteringEnabled]);
+  const keyExtractor = useCallback((item: TaskListEntry) => item.key, []);
 
   // Bottom padding for the list: tab bar + bottom inset + extra for FAB
   const listBottomPad = TabBarTokens.height + insets.bottom + 96;
@@ -285,7 +337,10 @@ export default function TasksScreen() {
           <Button label="Clear filters" onPress={handleClearAll} variant="ghost" />
         </View>
       ) : (
-        <Animated.ScrollView
+        <Animated.FlatList
+          data={listEntries}
+          keyExtractor={keyExtractor}
+          renderItem={renderListItem}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[styles.list, { paddingBottom: listBottomPad, flexGrow: 1 }]}
           refreshControl={
@@ -297,64 +352,10 @@ export default function TasksScreen() {
               progressBackgroundColor={Colors.surfaceAlt}
             />
           }
-        >
-          {/* Active section */}
-          <View style={styles.sectionHeader}>
-            <AppText variant="label" color={Colors.textMuted}>
-              Active ({active.length})
-            </AppText>
-          </View>
-          {active.length === 0 ? (
-            <AppText variant="body" color={Colors.textFaint} style={styles.emptyLine}>
-              No active tasks
-            </AppText>
-          ) : (
-            active.map((task, i) => (
-              <View key={task.id} style={styles.cardWrap}>
-                <SwipeableTaskCard
-                  task={task}
-                  category={getCat(task.categoryId)}
-                  onPress={() => router.push(taskDetailsHref(task.id))}
-                  onToggle={() => handleToggle(task.id)}
-                  onDelete={() => handleDelete(task.id)}
-                  index={i}
-                />
-              </View>
-            ))
-          )}
-
-          {/* Completed section */}
-          {completed.length > 0 && (
-            <>
-              <TouchableOpacity
-                style={styles.sectionHeader}
-                onPress={() => setCompletedCollapsed((v) => !v)}
-              >
-                <AppText variant="label" color={Colors.textMuted}>
-                  Completed ({completed.length})
-                </AppText>
-                <Feather
-                  name={completedCollapsed ? 'chevron-down' : 'chevron-up'}
-                  size={16}
-                  color={Colors.textFaint}
-                />
-              </TouchableOpacity>
-              {!completedCollapsed &&
-                completed.map((task, i) => (
-                  <View key={task.id} style={styles.cardWrap}>
-                    <SwipeableTaskCard
-                      task={task}
-                      category={getCat(task.categoryId)}
-                      onPress={() => router.push(taskDetailsHref(task.id))}
-                      onToggle={() => handleToggle(task.id)}
-                      onDelete={() => handleDelete(task.id)}
-                      index={i}
-                    />
-                  </View>
-                ))}
-            </>
-          )}
-        </Animated.ScrollView>
+          initialNumToRender={10}
+          windowSize={7}
+          removeClippedSubviews={Platform.OS === 'android'}
+        />
       )}
 
       {/* FAB removed — center tab bar button handles new tasks */}
@@ -372,6 +373,27 @@ export default function TasksScreen() {
         matchCount={sheetMatchCount}
       />
     </Screen>
+  );
+}
+
+function TaskListRow({ taskId, index, enteringEnabled }: { taskId: number; index: number; enteringEnabled: boolean }) {
+  const task = useTaskStore((state) => state.tasksById[taskId]);
+  const category = useTaskStore((state) => {
+    const categoryId = state.tasksById[taskId]?.categoryId;
+    return categoryId === null || categoryId === undefined ? undefined : state.categories.find((entry) => entry.id === categoryId);
+  });
+  const toggleComplete = useTaskStore((state) => state.toggleComplete);
+  const deleteTask = useTaskStore((state) => state.deleteTask);
+  const onPress = useCallback(() => router.push(taskDetailsHref(taskId)), [taskId]);
+  const onToggle = useCallback(() => { void toggleComplete(taskId); }, [taskId, toggleComplete]);
+  const onDelete = useCallback(async () => {
+    await deleteTask(taskId);
+  }, [deleteTask, taskId]);
+  if (!task) return null;
+  return (
+    <View style={styles.cardWrap}>
+      <SwipeableTaskCard task={task} category={category} onPress={onPress} onToggle={onToggle} onDelete={onDelete} index={index} enteringEnabled={enteringEnabled} />
+    </View>
   );
 }
 

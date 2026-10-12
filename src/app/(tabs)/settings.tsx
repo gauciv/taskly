@@ -273,8 +273,9 @@ export default function SettingsScreen() {
     });
     if (!ok) return;
     haptic.medium();
-    await clearCompleted();
+    const clearing = clearCompleted();
     showToast(`${completedCount} task${completedCount === 1 ? '' : 's'} cleared`, { type: 'success' });
+    await clearing;
   }
 
   async function handleResetAll() {

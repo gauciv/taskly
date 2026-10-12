@@ -168,10 +168,11 @@ interface UpcomingRowProps {
   taskTitle: string;
   fireTime: number;
   dueAt: number | null;
+  dueHasTime: boolean;
   onPress: () => void;
 }
 
-function UpcomingRow({ taskTitle, fireTime, dueAt, onPress }: UpcomingRowProps) {
+function UpcomingRow({ taskTitle, fireTime, dueAt, dueHasTime, onPress }: UpcomingRowProps) {
   // eslint-disable-next-line react-hooks/purity
   const diff = fireTime - Date.now();
   let countdown = '';
@@ -183,7 +184,7 @@ function UpcomingRow({ taskTitle, fireTime, dueAt, onPress }: UpcomingRowProps) 
   } else {
     countdown = `in ${formatSpan(diff)}`;
   }
-  const dueLabel = dueAt ? format(new Date(dueAt), 'MMM d') : '';
+  const dueLabel = dueAt ? `${format(new Date(dueAt), 'MMM d')}${dueHasTime ? ` · ${format(new Date(dueAt), 'h:mm a')}` : ' · All day'}` : '';
   return (
     <TouchableOpacity style={upStyles.row} onPress={onPress} accessibilityRole="button">
       <View style={upStyles.iconTile}>
@@ -599,6 +600,7 @@ export default function NotificationsScreen() {
                     taskTitle={u.task.title}
                     fireTime={u.fireTime}
                     dueAt={u.task.dueAt}
+                    dueHasTime={u.task.dueHasTime}
                     onPress={() => router.push(taskDetailsHref(u.task.id))}
                   />
                 ))}

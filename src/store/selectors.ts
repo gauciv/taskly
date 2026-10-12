@@ -23,13 +23,29 @@ function defaultSort(tasks: Task[], now = Date.now()): Task[] {
   });
 }
 
-export function selectSortedTasks(tasks: Task[]): Task[] {
-  return defaultSort(tasks);
+export function selectSortedTasks(
+  tasks: Task[],
+  now = Date.now(),
+  recentlyToggledIds: Record<number, { expiresAt: number; previousCompleted: boolean }> = {},
+): Task[] {
+  const held = tasks.map((task) => {
+    const recent = recentlyToggledIds[task.id];
+    return recent && recent.expiresAt > now ? { ...task, completed: recent.previousCompleted } : task;
+  });
+  return defaultSort(held, now);
 }
 
-export function selectTodayAndOverdue(tasks: Task[], now = Date.now()): Task[] {
+export function selectTodayAndOverdue(
+  tasks: Task[],
+  now = Date.now(),
+  recentlyToggledIds: Record<number, { expiresAt: number; previousCompleted: boolean }> = {},
+): Task[] {
   return defaultSort(tasks.filter((task) => {
-    const kind = getDueStatus(task, now).kind;
+    const recent = recentlyToggledIds[task.id];
+    const statusTask = recent && recent.expiresAt > now && !recent.previousCompleted
+      ? { ...task, completed: false }
+      : task;
+    const kind = getDueStatus(statusTask, now).kind;
     return kind === 'today' || kind === 'overdue';
   }), now);
 }
