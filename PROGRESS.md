@@ -134,3 +134,16 @@ Last updated: 2026-10-12
 - U8.2: GitHub Actions uses the immediately preceding plain semantic-version tag (version-sorted) as the comparison baseline; it builds only when the major/minor pair changes. Manual dispatch builds an artifact without publishing a release. Android native files are generated per CI run and remain ignored locally.
 - U8.2 validation: workflow YAML parsed; gate simulation passed first-release, major/minor, patch-only, and higher-patch cases. CI-mode Android prebuild completed and generated the standard debug keystore; the generated `android/` directory was removed. `package-lock.json` and `package.json` dependency sets match.
 - U8.3: README documents local DiceBear avatars, app features, tech/architecture/run instructions, and the release workflow including exact version examples, manual artifacts, install/signing details, and permissions recovery. Final TypeScript/lint/Android export passed; source hygiene found no initials avatars, non-token color literals, or console calls outside the guarded logger. `npm ci --ignore-scripts --dry-run --offline` confirmed lockfile install consistency. No tag, remote, or push was created.
+
+## Fix 10
+- [x] U10.1  analyze-failure.sh + fixtures + test-analyzer.sh passing
+- [ ] U10.2  node-shim.sh tested locally (stdout, exit code, stderr capture, stdin)
+- [ ] U10.3  preflight.sh with probes P1–P12 (never fails the job)
+- [ ] U10.4  gradle-build.sh: retries, failure pipeline, REPORT.md
+- [ ] U10.5  Workflow integration, YAML/bash validation, README "Debugging the release build"
+- [ ] U10.6  Final QA and report
+
+## Decisions
+- Fix 10 supersedes Fix 9 U9.1 local Gradle reproduction; all build diagnosis will run in GitHub Actions, and Gradle will not be run locally.
+- Fix 10 boot found a pre-existing `gradle-debug.log` with the reported Foojay plugin DNS failure and an uncommitted `package.json` script change (`expo run:*` replacing `expo start --*`). The log is diagnostic input and will not be committed; the unrelated package script edit is preserved unless later evidence shows it is generated build noise.
+- U10.1: added all 16 requested signature rules and realistic fixtures, including the observed hidden Node exit and Foojay DNS failure. `test-analyzer.sh` passes 16/16; it captures analyzer output before searching so test consumers do not close the evidence pipe early.
