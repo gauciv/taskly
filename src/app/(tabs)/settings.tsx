@@ -35,6 +35,8 @@ import { useNotificationStatus } from '@/store/useNotificationStatus';
 import { haptic } from '@/utils/feedback';
 import { achievementsHref } from '@/utils/routes';
 import { reportError } from '@/utils/errors';
+import { Avatar } from '@/components/ui/Avatar';
+import { AvatarPickerSheet } from '@/components/ui/AvatarPickerSheet';
 
 // ── Animated Toggle Switch ────────────────────────────────────────────────────
 interface ToggleSwitchProps {
@@ -215,11 +217,13 @@ function SectionLabel({ label }: { label: string }) {
 export default function SettingsScreen() {
   const {
     userName,
+    avatarSeed,
     notificationsEnabled,
     reminderOffsetMin,
     celebrationsEnabled,
     hapticsEnabled,
     setUserName,
+    setAvatarSeed,
     setNotificationsEnabled,
     setReminderOffset,
     setCelebrationsEnabled,
@@ -231,6 +235,7 @@ export default function SettingsScreen() {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(userName);
   const [savingName, setSavingName] = useState(false);
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const remindersShakeRef = useRef<() => void>(() => {});
 
@@ -306,10 +311,13 @@ export default function SettingsScreen() {
         {/* Profile */}
         <SectionLabel label="Profile" />
         <Card>
-          <CardRow>
-            <AppText variant="label" color={Colors.textMuted} style={styles.rowLabel}>
-              Name
-            </AppText>
+          <View style={styles.profileRow}>
+            <Pressable onPress={() => setAvatarPickerOpen(true)} accessibilityRole="button" accessibilityLabel="Choose profile avatar" style={styles.avatarButton}>
+              <Avatar seed={avatarSeed?.trim() || userName.trim() || 'Taskly'} size={64} />
+              <View style={styles.avatarEditBadge}><Feather name="edit-2" size={12} color={Colors.onAccent} /></View>
+            </Pressable>
+            <View style={styles.profileName}>
+              <AppText variant="label" color={Colors.textMuted}>Name</AppText>
             {editingName ? (
               <View style={styles.nameEditRow}>
                 <TextInput
@@ -348,7 +356,8 @@ export default function SettingsScreen() {
                 <AppText variant="caption" color={Colors.lime}>Edit</AppText>
               </TouchableOpacity>
             )}
-          </CardRow>
+            </View>
+          </View>
         </Card>
 
         {/* Rewards */}
@@ -473,6 +482,18 @@ export default function SettingsScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+      {avatarPickerOpen && (
+        <AvatarPickerSheet
+          initialSeed={avatarSeed?.trim() || userName.trim() || 'Taskly'}
+          onClose={() => setAvatarPickerOpen(false)}
+          onSave={async (seed) => {
+            const saved = await setAvatarSeed(seed);
+            if (!saved) return;
+            showToast('Avatar updated', { type: 'success' });
+            setAvatarPickerOpen(false);
+          }}
+        />
+      )}
     </Screen>
   );
 }
@@ -541,6 +562,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  profileRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.s4 },
+  profileName: { flex: 1, gap: Spacing.s2 },
+  avatarButton: { position: 'relative' },
+  avatarEditBadge: {
+    position: 'absolute', right: -2, bottom: -2, width: 24, height: 24,
+    borderRadius: 12, backgroundColor: Colors.lime, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: Colors.surfaceAlt,
   },
   toggleHitArea: {
     minWidth: 44,

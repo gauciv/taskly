@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Pressable,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
@@ -16,6 +17,9 @@ import { Button } from '@/components/ui/Button';
 import { NotchCard } from '@/components/ui/NotchCard';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { tabsHref } from '@/utils/routes';
+import { Avatar } from '@/components/ui/Avatar';
+import { Feather } from '@expo/vector-icons';
+import { reportError } from '@/utils/errors';
 
 const CARDS = [
   { color: Colors.cyan,   icon: 'check-square' as const, rotate: '15deg',  tx: 40,   ty: -40 },
@@ -26,15 +30,22 @@ const CARDS = [
 export default function WelcomeScreen() {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
-  const { setUserName, setOnboarded } = useSettingsStore();
+  const [shuffledSeed, setShuffledSeed] = useState<string | null>(null);
+  const { setUserName, setOnboarded, setAvatarSeed } = useSettingsStore();
 
   async function handleStart() {
     setLoading(true);
     try {
       haptic.success();
       await setUserName(name.trim() || 'Friend');
+      if (shuffledSeed) {
+        const saved = await setAvatarSeed(shuffledSeed);
+        if (!saved) return;
+      }
       await setOnboarded();
       router.replace(tabsHref);
+    } catch (error) {
+      reportError(error, { context: 'welcome.start', userMessage: "Couldn't finish setup" });
     } finally {
       setLoading(false);
     }
@@ -85,6 +96,21 @@ export default function WelcomeScreen() {
           <AppText variant="body" color={Colors.textMuted} style={styles.subtitle}>
             Everything you need to do, right where you need it.
           </AppText>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(470).duration(260)} style={styles.avatarPreviewWrap}>
+          <Avatar seed={(shuffledSeed ?? name.trim()) || 'Taskly'} size={88} />
+          <Pressable
+            style={styles.shuffleBadge}
+            onPress={() => {
+              haptic.selection();
+              setShuffledSeed(`Shuffle-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Shuffle profile avatar"
+          >
+            <Feather name="shuffle" size={14} color={Colors.onAccent} />
+          </Pressable>
         </Animated.View>
 
         {/* Name input */}
@@ -152,6 +178,12 @@ const styles = StyleSheet.create({
   },
   inputWrap: {
     marginBottom: Spacing.s4,
+  },
+  avatarPreviewWrap: { alignSelf: 'center', marginBottom: Spacing.s4, position: 'relative' },
+  shuffleBadge: {
+    position: 'absolute', right: -4, bottom: -4, width: 32, height: 32,
+    borderRadius: 16, backgroundColor: Colors.lime, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: Colors.bg,
   },
   input: {
     backgroundColor: Colors.surfaceAlt,

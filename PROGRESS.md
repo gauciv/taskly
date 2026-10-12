@@ -121,3 +121,11 @@ Last updated: 2026-10-12
 - U7.2: `PriorityBadge` is only used by the shared `TaskCard`, so Home, Tasks, and Schedule now all render the same flag-and-label pill after the due label or alone when there is no due date. A source search found no remaining priority-dot mode or list-specific priority indicator.
 - U7.3: TypeScript, lint, Expo Doctor (21/21), and Android export pass. Hygiene scan found no source color literals outside theme tokens, no `console.*` outside logger, no `withRepeat`, and no empty catches outside the haptics helper; the notification loader's optional-module catch logs DEV info. Removed seven unused direct Expo packages while retaining Expo Router peers and the chart's Expo gradient peer. Acceptance trace covered center add/prefilled Schedule date, CRUD + confirmation/Undo, shared completion/celebration path, Details/edit, SQLite/category persistence, due status, search/filter, notifications, settings/reset, achievements, and app metadata.
 - U7.4: Replaced the working-notes README with the submission document: requirement map, tech stack, folder structure, three-sentence architecture, run instructions, performance note, credits, and a ten-step demo script. Progress status is COMPLETE; the legacy P0–P11 checklist and U3–U7 checklists are all complete.
+
+## Final 2
+- [x] U8.1  Generated avatars (DiceBear or fallback), Avatar component, picker sheet, welcome preview, initials removed
+- [ ] U8.2  release-apk.yml (gate: major/minor change only), .gitignore, lockfile, prebuild + YAML + gate validation
+- [ ] U8.3  README (avatars credit + Releasing), final QA, Status: COMPLETE, final commit (no tag, no push)
+
+## Decisions
+- U8.1: use DiceBear Lorelei (`@dicebear/core` and `@dicebear/lorelei`, both MIT package licenses; Lorelei artwork is CC0 1.0). Avatar SVG is generated on-device from the seed and cached in memory; no network requests or attribution requirement.

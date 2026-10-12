@@ -19,6 +19,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { TaskCard } from '@/components/task/TaskCard';
 import { ProgressHero } from '@/components/ui/ProgressHero';
+import { Avatar } from '@/components/ui/Avatar';
 import { useTaskStore } from '@/store/useTaskStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
@@ -35,14 +36,6 @@ import { startOfDay } from 'date-fns';
 
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('');
-}
-
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const tasks = useTaskStore((s) => s.tasks);
@@ -50,6 +43,7 @@ export default function HomeScreen() {
   const recentlyToggledIds = useTaskStore((s) => s.recentlyToggledIds);
   const toggleComplete = useTaskStore((s) => s.toggleComplete);
   const userName = useSettingsStore((s) => s.userName);
+  const avatarSeed = useSettingsStore((s) => s.avatarSeed);
   const [enteringEnabled, setEnteringEnabled] = useState(true);
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
@@ -96,11 +90,7 @@ export default function HomeScreen() {
       >
         {/* Header */}
         <Animated.View entering={FadeInDown.duration(220)} style={styles.header}>
-          <View style={styles.avatar}>
-            <AppText variant="title" color={Colors.onAccent}>
-              {getInitials(userName)}
-            </AppText>
-          </View>
+          <Avatar seed={avatarSeed?.trim() || userName.trim() || 'Taskly'} size={52} />
           <View style={styles.greeting}>
             <AppText variant="caption" color={Colors.textMuted}>Welcome back,</AppText>
             <AppText variant="title" color={Colors.text}>{userName}</AppText>
@@ -226,14 +216,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.screenH,
     paddingVertical: Spacing.s4,
     gap: Spacing.s3,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.lime,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   greeting: {
     flex: 1,

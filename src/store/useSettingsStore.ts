@@ -6,6 +6,7 @@ import { reportError } from '@/utils/errors';
 
 interface SettingsStore {
   userName: string;
+  avatarSeed: string | null;
   notificationsEnabled: boolean;
   reminderOffsetMin: 0 | 10 | 60;
   onboarded: boolean;
@@ -18,6 +19,7 @@ interface SettingsStore {
 
   hydrate: () => Promise<void>;
   setUserName: (name: string) => Promise<void>;
+  setAvatarSeed: (seed: string) => Promise<boolean>;
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
   setReminderOffset: (min: 0 | 10 | 60) => Promise<void>;
   setOnboarded: () => Promise<void>;
@@ -29,6 +31,7 @@ interface SettingsStore {
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
   userName: 'Friend',
+  avatarSeed: null,
   notificationsEnabled: true,
   reminderOffsetMin: 0,
   onboarded: false,
@@ -48,6 +51,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     }
     set({
       userName: settings['user_name'] ?? 'Friend',
+      avatarSeed: settings['avatar_seed'] ?? null,
       notificationsEnabled: settings['notifications_enabled'] !== '0',
       reminderOffsetMin: (Number(settings['reminder_offset_min'] ?? 0)) as 0 | 10 | 60,
       onboarded: settings['onboarded'] === '1',
@@ -81,6 +85,23 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   setUserName: async (name) => {
     set({ userName: name });
     await setSetting('user_name', name);
+  },
+
+  setAvatarSeed: async (seed) => {
+    const previous = get().avatarSeed;
+    set({ avatarSeed: seed });
+    try {
+      await setSetting('avatar_seed', seed);
+    } catch (error) {
+      set({ avatarSeed: previous });
+      reportError(error, {
+        context: 'settings.setAvatarSeed',
+        userMessage: "Couldn't save your avatar",
+        retry: () => { void get().setAvatarSeed(seed); },
+      });
+      return false;
+    }
+    return true;
   },
 
   setNotificationsEnabled: async (enabled) => {
