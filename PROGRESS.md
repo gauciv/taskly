@@ -90,13 +90,14 @@ Last updated: 2026-10-11
 ## Fix 6
 - [x] U6.1  Reanimated invalid color crash fixed (opacity-based pulses, withAlpha helper, audit)
 - [x] U6.2  Category persistence bug fixed (root cause logged, safe seeding/migrations, read-after-write)
-- [ ] U6.3  getDueStatus single source of truth (date-only overdue bug, formatSpan)
+- [x] U6.3  getDueStatus single source of truth (date-only overdue bug, formatSpan)
 - [ ] U6.4  Task Details redesign (hero, due card, info cards, notes, activity timeline, sticky action bar)
 - [ ] U6.5  Feedback latency/jank pass (no awaits before feedback, delayed re-sort, memoized lists, prewarmed confetti)
 - [ ] U6.6  Final QA, grep checks, README, commit
 - Fix 6 U6.1: animated color alpha formatting can produce scientific notation and fail Reanimated's parser. Use fixed colors with animated opacity for pulses; `withAlpha` is for static tints only.
 - U6.1 root cause confirmed: `TaskCard` interpolated `borderOpacity.value` into an `rgba()` string inside `useAnimatedStyle`; its final near-zero timing frame produced exponent notation. The highlight now overlays a fixed lime border and animates clamped opacity; scale is a separate animated wrapper. Checkbox burst ring uses fixed geometry/color with opacity/scale animation.
 - U6.2 diagnosis: the historical category-null event is not reproducible from this checkout. Startup migration already used an empty-table guard and plain category INSERT; form state, task INSERT parameter order, row mapping, and patch-only UPDATE all preserve the numeric category ID. Hardened the guarded seed into one transaction and made read-after-write failures explicit. No repair is possible for rows whose prior `category_id` is already NULL.
+- U6.3: due state now comes from `getDueStatus`; date-only tasks remain `today` until the local day changes, while timed tasks cross to overdue after their exact timestamp. Day spans use calendar-day differences for DST safety; duration text floors to singular/plural minute, hour, day, or week units. Inbox overdue entries remain delayed by one hour for timed tasks and start of the next local day for date-only tasks.
 
 ## Known issues
 (non-blocking bugs or warnings)

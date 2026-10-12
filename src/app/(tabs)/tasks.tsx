@@ -25,7 +25,7 @@ import { useTaskStore } from '@/store/useTaskStore';
 import { showToast } from '@/components/ui/Toast';
 import { selectSortedTasks } from '@/store/selectors';
 import { taskDetailsHref } from '@/utils/routes';
-import { isToday, isOverdue } from '@/utils/date';
+import { getDueStatus } from '@/utils/dueStatus';
 import { useTaskFilters, type StatusFilter } from '@/store/useTaskFilters';
 import { usePullRefresh } from '@/hooks/usePullRefresh';
 
@@ -100,8 +100,8 @@ export default function TasksScreen() {
       }
       if (s === 'active') list = list.filter((t) => !t.completed);
       if (s === 'completed') list = list.filter((t) => t.completed);
-      if (s === 'today') list = list.filter((t) => t.dueAt !== null && isToday(t.dueAt));
-      if (s === 'overdue') list = list.filter((t) => isOverdue(t));
+      if (s === 'today') list = list.filter((task) => getDueStatus(task).kind === 'today');
+      if (s === 'overdue') list = list.filter((task) => getDueStatus(task).kind === 'overdue');
       if (catId !== null) list = list.filter((t) => t.categoryId === catId);
       if (pri !== 'all') list = list.filter((t) => String(t.priority) === pri);
       return list;

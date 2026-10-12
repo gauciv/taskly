@@ -1,12 +1,12 @@
 import {
   startOfDay,
   isToday as dfnsIsToday,
-  isTomorrow,
   format,
   addDays,
   startOfWeek,
 } from 'date-fns';
 import { Task } from '@/types';
+import { formatDueDateLabel, getDueStatus } from '@/utils/dueStatus';
 
 export function startOfDayMs(ts: number): number {
   return startOfDay(new Date(ts)).getTime();
@@ -16,20 +16,12 @@ export function isToday(ts: number): boolean {
   return dfnsIsToday(new Date(ts));
 }
 
-export function isOverdue(task: Pick<Task, 'dueAt' | 'dueHasTime' | 'completed'>): boolean {
-  if (task.completed || task.dueAt === null) return false;
-  const now = Date.now();
-  if (task.dueHasTime) return task.dueAt < now;
-  return startOfDayMs(task.dueAt) < startOfDayMs(now);
+export function isOverdue(task: Pick<Task, 'dueAt' | 'dueHasTime' | 'completed'>, now = Date.now()): boolean {
+  return getDueStatus(task, now).kind === 'overdue';
 }
 
-export function formatDueLabel(task: Pick<Task, 'dueAt' | 'dueHasTime'>): string {
-  if (task.dueAt === null) return '';
-  const d = new Date(task.dueAt);
-  const timeStr = task.dueHasTime ? ` ${format(d, 'hh:mm a')}` : '';
-  if (dfnsIsToday(d)) return `Today${timeStr}`;
-  if (isTomorrow(d)) return `Tomorrow${timeStr}`;
-  return `${format(d, 'EEE, MMM d')}${timeStr}`;
+export function formatDueLabel(task: Pick<Task, 'dueAt' | 'dueHasTime'>, now = Date.now()): string {
+  return formatDueDateLabel(task, now);
 }
 
 export function formatTime(ts: number): string {

@@ -21,7 +21,7 @@ import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { haptic } from '@/utils/feedback';
-import { format, formatDistanceToNowStrict, isToday, isYesterday } from 'date-fns';
+import { format, isToday, isYesterday } from 'date-fns';
 import {
   Colors,
   Spacing,
@@ -41,6 +41,7 @@ import { useTaskStore } from '@/store/useTaskStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { taskDetailsHref } from '@/utils/routes';
 import { usePullRefresh } from '@/hooks/usePullRefresh';
+import { formatSpan } from '@/utils/dueStatus';
 import type { NotificationRow } from '@/db/notificationsRepo';
 import { ensurePermission, resyncAll } from '@/services/notifications';
 
@@ -180,9 +181,9 @@ function UpcomingRow({ taskTitle, fireTime, dueAt, onPress }: UpcomingRowProps) 
     const m = Math.floor((diff % 3600_000) / 60_000);
     countdown = m > 0 ? `in ${h}h ${m}m` : `in ${h}h`;
   } else {
-    countdown = formatDistanceToNowStrict(new Date(fireTime), { addSuffix: true });
+    countdown = `in ${formatSpan(diff)}`;
   }
-  const dueLabel = dueAt ? format(new Date(dueAt), 'MMM d, h:mm a') : '';
+  const dueLabel = dueAt ? format(new Date(dueAt), 'MMM d') : '';
   return (
     <TouchableOpacity style={upStyles.row} onPress={onPress} accessibilityRole="button">
       <View style={upStyles.iconTile}>

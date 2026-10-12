@@ -16,7 +16,8 @@ import { AppText } from '@/components/ui/AppText';
 import { AnimatedCheckbox } from '@/components/ui/AnimatedCheckbox';
 import { PriorityBadge } from '@/components/ui/PriorityBadge';
 import { PressableScale } from '@/components/ui/PressableScale';
-import { formatDueLabel, isOverdue } from '@/utils/date';
+import { formatDueLabel } from '@/utils/date';
+import { getDueStatus } from '@/utils/dueStatus';
 import { useTaskStore } from '@/store/useTaskStore';
 
 type FeatherIconName = React.ComponentProps<typeof Feather>['name'];
@@ -31,8 +32,8 @@ interface TaskCardProps {
 
 function TaskCardInner({ task, category, onPress, onToggle, index = 0 }: TaskCardProps) {
   const dueLabel = formatDueLabel(task);
-  const overdue = isOverdue(task);
-  const dueColor = overdue && !task.completed ? Colors.danger : Colors.textMuted;
+  const dueStatus = getDueStatus(task);
+  const dueColor = dueStatus.tone;
   const cardBg = task.completed && category
     ? tintedFill(category.color)
     : Colors.surfaceAlt;

@@ -5,7 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import Animated, {
   FadeInDown,
 } from 'react-native-reanimated';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 import { Colors, Spacing, Radii, tintedFill } from '@/theme/tokens';
 import { AppText } from '@/components/ui/AppText';
 import { IconButton } from '@/components/ui/IconButton';
@@ -16,7 +16,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { showToast } from '@/components/ui/Toast';
 import { confirm } from '@/components/ui/ConfirmDialog';
 import { taskEditHref } from '@/utils/routes';
-import { isOverdue, isToday } from '@/utils/date';
+import { getDueStatus } from '@/utils/dueStatus';
 import { haptic } from '@/utils/feedback';
 import { Priority } from '@/types';
 
@@ -29,17 +29,6 @@ function getReminderLabel(offsetMs: number): string {
   return `${Math.round(min / 60)} hour before`;
 }
 
-function getStatusChip(task: {
-  completed: boolean;
-  dueAt: number | null;
-}): { label: string; color: string } {
-  if (task.completed) return { label: 'Completed', color: Colors.success };
-  if (task.dueAt && isOverdue({ completed: task.completed, dueAt: task.dueAt, dueHasTime: true }))
-    return { label: 'Overdue', color: Colors.danger };
-  if (task.dueAt && isToday(task.dueAt)) return { label: 'Due today', color: Colors.lime };
-  if (task.dueAt) return { label: 'Upcoming', color: Colors.purple };
-  return { label: 'No due date', color: Colors.textMuted };
-}
 
 export default function TaskDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -65,7 +54,7 @@ export default function TaskDetailsScreen() {
   // Narrowed reference — TS needs this to see `task` as non-undefined inside async callbacks
   const t = task;
   const category = t.categoryId ? categories.find((c) => c.id === t.categoryId) : undefined;
-  const status = getStatusChip(t);
+  const status = getDueStatus(t);
   const catColor = category?.color ?? Colors.purple;
 
   async function handleToggle() {
@@ -140,8 +129,8 @@ export default function TaskDetailsScreen() {
 
           {/* Status chips row */}
           <View style={styles.chipsRow}>
-            <View style={[styles.statusChip, { backgroundColor: status.color + '22', borderColor: status.color + '55' }]}>
-              <AppText variant="caption" color={status.color}>{status.label}</AppText>
+            <View style={[styles.statusChip, { backgroundColor: status.tone + '22', borderColor: status.tone + '55' }]}>
+              <AppText variant="caption" color={status.tone}>{status.label}</AppText>
             </View>
             <PriorityBadge priority={t.priority} />
           </View>
@@ -171,7 +160,7 @@ export default function TaskDetailsScreen() {
                     : format(new Date(t.dueAt), 'EEE, MMM d')}
                 </AppText>
                 <AppText variant="caption" color={Colors.textFaint}>
-                  {formatDistanceToNow(new Date(t.dueAt), { addSuffix: true })}
+                  {status.detail}
                 </AppText>
               </>
             ) : (

@@ -28,6 +28,7 @@ import { DueDatePicker } from './DueDatePicker';
 import { useTaskStore } from '@/store/useTaskStore';
 import { showToast } from '@/components/ui/Toast';
 import { confirm } from '@/components/ui/ConfirmDialog';
+import { getDueStatus } from '@/utils/dueStatus';
 
 const TITLE_MAX = 80;
 const TITLE_WARN = 70;
@@ -82,8 +83,8 @@ export function TaskForm({ task, prefillCategoryId, prefillDue }: TaskFormProps)
     setDueHasTime(hasTime);
     // Fire past-due warning haptic once per new selection that is already past
     const nowMs = Date.now();
-    const nowPastDue = at !== null && hasTime && at < nowMs;
-    const wasPastDue = dueAt !== null && dueHasTime && dueAt < nowMs;
+    const nowPastDue = getDueStatus({ dueAt: at, dueHasTime: hasTime, completed: false }, nowMs).kind === 'overdue';
+    const wasPastDue = getDueStatus({ dueAt, dueHasTime, completed: false }, nowMs).kind === 'overdue';
     if (nowPastDue && !wasPastDue) {
       haptic.warning();
     }

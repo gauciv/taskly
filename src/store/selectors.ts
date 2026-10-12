@@ -1,11 +1,15 @@
 import { Task, Category } from '@/types';
-import { startOfDayMs, isToday, isOverdue } from '@/utils/date';
+import { startOfDayMs } from '@/utils/date';
+import { getDueStatus } from '@/utils/dueStatus';
 import { startOfDay, addDays, format } from 'date-fns';
 
-function defaultSort(tasks: Task[]): Task[] {
+function defaultSort(tasks: Task[], now = Date.now()): Task[] {
   return [...tasks].sort((a, b) => {
     // Incomplete before complete
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
+    const dueOrder: Record<string, number> = { overdue: 0, today: 1, upcoming: 2, none: 3, completed: 4 };
+    const statusDelta = dueOrder[getDueStatus(a, now).kind] - dueOrder[getDueStatus(b, now).kind];
+    if (statusDelta !== 0) return statusDelta;
     // Due date ascending (no due date last)
     if (a.dueAt !== b.dueAt) {
       if (a.dueAt === null) return 1;
@@ -23,13 +27,11 @@ export function selectSortedTasks(tasks: Task[]): Task[] {
   return defaultSort(tasks);
 }
 
-export function selectTodayAndOverdue(tasks: Task[]): Task[] {
-  return defaultSort(
-    tasks.filter((t) => {
-      if (t.dueAt === null) return false;
-      return isToday(t.dueAt) || isOverdue(t);
-    })
-  );
+export function selectTodayAndOverdue(tasks: Task[], now = Date.now()): Task[] {
+  return defaultSort(tasks.filter((task) => {
+    const kind = getDueStatus(task, now).kind;
+    return kind === 'today' || kind === 'overdue';
+  }), now);
 }
 
 export function selectTasksForDay(tasks: Task[], day: Date): Task[] {
@@ -60,8 +62,8 @@ export function selectOpenCountByCategory(
     .sort((a, b) => b.count - a.count);
 }
 
-export function selectOverdueCount(tasks: Task[]): number {
-  return tasks.filter((t) => isOverdue(t)).length;
+export function selectOverdueCount(tasks: Task[], now = Date.now()): number {
+  return tasks.filter((task) => getDueStatus(task, now).kind === 'overdue').length;
 }
 
 export function selectDayHasTasks(tasks: Task[], day: Date): boolean {

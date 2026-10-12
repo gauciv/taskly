@@ -6,7 +6,7 @@
  */
 import { startOfDay } from 'date-fns';
 import { Task } from '@/types';
-import { isOverdue } from '@/utils/date';
+import { getDueStatus } from '@/utils/dueStatus';
 import { showToast } from '@/components/ui/Toast';
 import { haptic } from '@/utils/feedback';
 import { logError } from '@/utils/logger';
@@ -113,7 +113,7 @@ export async function onTaskCompleted(
         !t.completed &&
         (
           (t.dueAt !== null && t.dueAt >= todayStart && t.dueAt < todayEnd) ||
-          isOverdue(t)
+          getDueStatus(t, now).kind === 'overdue'
         )
     );
     const lastAllDoneDay = await getLastAllDoneDay();
@@ -167,7 +167,7 @@ export async function onTaskCompleted(
     // Contextual success toast with Undo
     const undoAction = onUndo ? { label: 'Undo', onPress: onUndo } : undefined;
     let message: string;
-    if (task.dueAt !== null && isOverdue({ ...task, completed: false })) {
+    if (task.dueAt !== null && getDueStatus({ ...task, completed: false }, now).kind === 'overdue') {
       message = 'Back on track!';
     } else if (task.completedAt !== null && task.dueAt !== null && task.completedAt < task.dueAt) {
       message = 'Ahead of schedule!';

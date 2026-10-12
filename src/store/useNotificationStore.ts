@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { format, startOfDay, addDays } from 'date-fns';
 import { Task } from '@/types';
+import { getDueStatus } from '@/utils/dueStatus';
 import {
   NotificationRow,
   getAllNotifications,
@@ -149,7 +150,7 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
 
       // Overdue entry
       const overdueAt = calcOverdueTime(task);
-      if (overdueAt <= now && overdueAt >= task.createdAt) {
+      if (getDueStatus(task, now).kind === 'overdue' && overdueAt <= now && overdueAt >= task.createdAt) {
         const dedupeKey = `overdue:${task.id}:${task.dueAt}`;
         const body = overdueBody(task);
         const inserted = await insertNotification({
