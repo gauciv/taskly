@@ -112,9 +112,10 @@ Last updated: 2026-10-11
 
 ## Final
 - [x] U7.1  Circular checkbox (empty ring / lime check), burst unmounted at rest, inner dot removed
-- [ ] U7.2  Labeled priority pill on cards, no standalone dots
+- [x] U7.2  Labeled priority pill on cards, no standalone dots
 - [ ] U7.3  Final QA: tsc, lint, doctor, bundle, hygiene, acceptance audit, app.json
 - [ ] U7.4  README + demo script, Status: COMPLETE, final commit
 
 ## Decisions
 - U7.1 root cause: the old checkbox intentionally rendered the category-colored ring burst and its sparks whenever motion was enabled, even at progress zero, so the ring/spark overlap read as a permanent inner dot. The replacement mounts the burst only while its shared progress is active; the resting unchecked tree contains only the empty circular outline.
+- U7.2: `PriorityBadge` is only used by the shared `TaskCard`, so Home, Tasks, and Schedule now all render the same flag-and-label pill after the due label or alone when there is no due date. A source search found no remaining priority-dot mode or list-specific priority indicator.
